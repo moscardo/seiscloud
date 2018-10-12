@@ -13,9 +13,9 @@ from pyrocko import moment_tensor, orthodrome, model, util
 from pyrocko.guts import load, dump
 
 #from seiscloud import config
-import config
-import seiscloudcluster as sccluster
-import seiscloudplot as scplot
+import seiscloud.config
+import seiscloud.seiscloudcluster as sccluster
+import seiscloud.seiscloudplot as scplot
 
 '''
 Seismicity clustering
