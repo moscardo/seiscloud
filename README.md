@@ -1,7 +1,7 @@
 ## Seiscloud
 Software for seismicity clustering.
 
-![Screenshot](https://github.com/moscardo/seiscloud/src/seiscloud_logo.png)
+![Screenshot](https://github.com/moscardo/seiscloud/tree/master/src/seiscloud_logo.png)
 
 * Computation of similarity matrices upon different metrics
 * Clustering using DBSCAN algorithm
