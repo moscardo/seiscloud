@@ -76,10 +76,9 @@ class SeiscloudConfig(Object):
                     help='Maximum considered time based distance (s)',default=86400.)
     figure_format   = String.T(
                     help='Format of output figures (pdf|png)',default='png')
-    radius_map_plot = Float.T(
-                    help='Radius of map plots (m); if None, it is internally calculated' ,default=None)
-#    cluster_sorting = String.T(
-#                    help='Clustering sorting parameter',default='size')
+    map_radius      = Float.T(
+                    help='Radius of map plots (m); if None, it is internally calculated',
+                    default=100000.)
     sw_findcenters  = Bool.T(
                     help='Maximum considered spatial distance',default=False)
     sw_filterevent  = Bool.T(
