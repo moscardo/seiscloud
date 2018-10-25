@@ -13,9 +13,9 @@ from pyrocko import moment_tensor, orthodrome, model, util
 from pyrocko.guts import load, dump
 
 #from seiscloud import config
-from . import sc_cluster as sccluster
-from . import sc_plot as scplot
-from . import sc_config as scconfig
+import config
+import seiscloudcluster as sccluster
+import seiscloudplot as scplot
 
 '''
 Seismicity clustering
@@ -142,7 +142,7 @@ def command_example(args):
     if ((not options.force) and (os.path.exists('seiscloud.example.config'))):
         die('file exists: %s; use force option' % fn_config)
     else:
-        conf = scconfig.generate_default_config()
+        conf = config.generate_default_config()
         conf.dump(filename=fn_config)
         print('Created a fresh config file "%s"' % fn_config)
 
@@ -170,7 +170,7 @@ def command_init(args):
         die('config file missing: %s' % fn_config)
 
     conf = load(filename=fn_config)
-    scconfig.check(conf)
+    config.check(conf)
 
     if ((not options.force) and (os.path.isdir(conf.project_dir))):
         die('project directory exists: %s; use force option' % conf.project_dir)
@@ -216,7 +216,7 @@ def command_matrix(args):
         die('config file missing: %s' % fn_config)
 
     conf = load(filename=fn_config)
-    scconfig.check(conf)
+    config.check(conf)
 
     if not os.path.isdir(conf.project_dir):
         die('project directory missing: %s' % conf.project_dir)
@@ -309,7 +309,7 @@ def command_cluster(args):
         die('config file missing: %s' % fn_config)
 
     conf = load(filename=fn_config)
-    scconfig.check(conf)
+    config.check(conf)
 
     if not os.path.isdir(conf.project_dir):
         die('project directory missing: %s' % conf.project_dir)
@@ -390,7 +390,7 @@ def command_plot(args):
         die('config file missing: %s' % fn_config)
 
     conf = load(filename=fn_config)
-    scconfig.check(conf)
+    config.check(conf)
 
     if not os.path.isdir(conf.project_dir):
         die('project directory missing: %s' % conf.project_dir)
