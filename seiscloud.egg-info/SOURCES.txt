@@ -1,6 +1,5 @@
 README.md
 setup.py
-apps/seiscloud
 seiscloud.egg-info/PKG-INFO
 seiscloud.egg-info/SOURCES.txt
 seiscloud.egg-info/dependency_links.txt
@@ -9,3 +8,4 @@ src/__init__.py
 src/sc_cluster.py
 src/sc_config.py
 src/sc_plot.py
+src/seiscloud
