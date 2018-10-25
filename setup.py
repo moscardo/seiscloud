@@ -17,5 +17,5 @@ setup(
     install_requires=[],
     packages=['seiscloud'],
     package_dir={'seiscloud': 'src'},
-    scripts=['apps/seiscloud'],
+    scripts=['src/seiscloud'],
 )
