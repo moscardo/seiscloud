@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/local/bin/python3
 
 
 import re, sys, os, shutil, glob, operator
@@ -12,10 +12,9 @@ import numpy as num
 from pyrocko import moment_tensor, orthodrome, model, util
 from pyrocko.guts import load, dump
 
-#from seiscloud import config
-import config
-import seiscloudcluster as sccluster
-import seiscloudplot as scplot
+from seiscloud import config
+from seiscloud import cluster as sccluster
+from seiscloud import plot as scplot
 
 '''
 Seismicity clustering
@@ -434,11 +433,7 @@ def command_plot(args):
     print('Seiscloud plots prepared in "%s"' % plotdir)
 
 
-
-
-
-if __name__ == '__main__':
-
+def main():
     if len(sys.argv) < 2:
         die('Usage: %s' % usage)
 
