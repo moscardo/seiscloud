@@ -6,7 +6,7 @@ import os
 import shutil
 from optparse import OptionParser
 
-from pyrocko import model
+from pyrocko import model, util
 from pyrocko.client import catalog
 from pyrocko.guts import load
 
@@ -181,7 +181,8 @@ def command_init(args):
             else:   # geofon
                 orig_catalog = catalog.Geofon()
             events = orig_catalog.get_events(
-                        time_range=(conf.tmin, conf.tmax),
+                        time_range=(util.str_to_time(conf.tmin),
+                                    util.str_to_time(conf.tmax)),
                         magmin=conf.magmin,
                         latmin=conf.latmin,
                         latmax=conf.latmax,
