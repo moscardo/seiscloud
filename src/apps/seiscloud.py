@@ -1,16 +1,14 @@
 #!/usr/local/bin/python3
 
 
-import re, sys, os, shutil, glob, operator
-import math, random, string
-import datetime, time, calendar
+import sys
+import os
+import shutil
 from optparse import OptionParser
 
-import numpy as num
-#from numpy import mean,std,var,median
-
-from pyrocko import moment_tensor, orthodrome, model, util
-from pyrocko.guts import load, dump
+from pyrocko import model
+from pyrocko.client import catalog
+from pyrocko.guts import load
 
 from seiscloud import config
 from seiscloud import cluster as sccluster
@@ -25,8 +23,7 @@ Seismicity clustering
 4. plot    - Plot clustering results
 '''
 
-km=1000.
-
+km = 1000.
 
 
 def d2u(d):
@@ -34,7 +31,6 @@ def d2u(d):
         return dict((k.replace('-', '_'), v) for (k, v) in d.items())
     else:
         return d.replace('-', '_')
-
 
 
 subcommand_descriptions = {
@@ -77,7 +73,6 @@ To get further help and a list of available options for any subcommand run:
 ''' % usage_tdata
 
 
-
 def die(message, err=''):
     if err:
         sys.exit('%s: error: %s \n %s' % (program_name, message, err))
@@ -85,12 +80,10 @@ def die(message, err=''):
         sys.exit('%s: error: %s' % (program_name, message))
 
 
-
 def help_and_die(parser, message):
     parser.print_help(sys.stderr)
     sys.stderr.write('\n')
     die(message)
-
 
 
 def cl_parse(command, args, setup=None, details=None):
@@ -122,7 +115,6 @@ def cl_parse(command, args, setup=None, details=None):
     return parser, options, args
 
 
-
 def command_example(args):
     '''
     Execution of command example
@@ -146,7 +138,6 @@ def command_example(args):
         print('Created a fresh config file "%s"' % fn_config)
 
 
-
 def command_init(args):
     '''
     Execution of command init
@@ -160,7 +151,7 @@ def command_init(args):
 
     parser, options, args = cl_parse('init', args, setup)
 
-    if len(args)!=1:
+    if len(args) != 1:
         help_and_die(parser, 'missing argument')
     else:
         fn_config = args[0]
@@ -172,17 +163,34 @@ def command_init(args):
     config.check(conf)
 
     if ((not options.force) and (os.path.isdir(conf.project_dir))):
-        die('project directory exists: %s; use force option' % conf.project_dir)
+        die('project dir exists: %s; use force option' % conf.project_dir)
     else:
         if os.path.isdir(conf.project_dir):
             shutil.rmtree(conf.project_dir)
         os.mkdir(conf.project_dir)
-        conf.dump(filename=os.path.join(conf.project_dir,'seiscloud.config'))
-        src,dst=conf.catalog_fn,os.path.join(conf.project_dir,'catalog.pf')
-        shutil.copyfile(src, dst)
+        conf.dump(filename=os.path.join(conf.project_dir, 'seiscloud.config'))
+
+        dst = os.path.join(conf.project_dir, 'catalog.pf')
+
+        if conf.catalog_origin == 'file':
+            src = conf.catalog_fn
+            shutil.copyfile(src, dst)
+        else:
+            if conf.catalog_origin == 'globalcmt':
+                orig_catalog = catalog.GlobalCMT()
+            else:   # geofon
+                orig_catalog = catalog.Geofon()
+            events = orig_catalog.get_events(
+                        time_range=(conf.tmin, conf.tmax),
+                        magmin=conf.magmin,
+                        latmin=conf.latmin,
+                        latmax=conf.latmax,
+                        lonmin=conf.lonmin,
+                        lonmax=conf.lonmax)
+            selevents = [ev for ev in events if ev.magnitude <= conf.magmax]
+            model.dump_events(selevents, dst)
 
         print('Project directory prepared "%s"' % conf.project_dir)
-
 
 
 def command_matrix(args):
@@ -206,7 +214,7 @@ def command_matrix(args):
 
     parser, options, args = cl_parse('matrix', args, setup)
 
-    if len(args)!=1:
+    if len(args) != 1:
         help_and_die(parser, 'missing argument')
     else:
         fn_config = args[0]
@@ -220,62 +228,65 @@ def command_matrix(args):
     if not os.path.isdir(conf.project_dir):
         die('project directory missing: %s' % conf.project_dir)
 
-    simmat_temporal_fn=os.path.join(conf.project_dir,'simmat_temporal.npy')
+    simmat_temporal_fn = os.path.join(conf.project_dir, 'simmat_temporal.npy')
 
     if ((not options.force) and (os.path.isfile(simmat_temporal_fn))):
-        die('similarity matrix exists: %s; use force option' % simmat_temporal_fn)
+        die('similarity matrix exists: %s; use force option'
+            % simmat_temporal_fn)
 
-    try:
-        allevents=model.load_events(conf.catalog_fn)
-    except:
-        die('catalog not readable: %s' % conf.catalog_fn)
+    if os.path.isfile(conf.catalog_fn):
+        allevents = model.load_events(conf.catalog_fn)
+    else:
+        die('catalog missing: %s' % conf.catalog_fn)
 
     if conf.sw_simmat:
         if not os.path.isfile(conf.sim_mat_fn):
             die('similarity matrix missing: %s' % conf.sim_mat_fn)
-        if conf.sim_mat_type=='binary':
-            try:
-                simmat=load_similarity_matrix(conf.sim_mat_fn)
-            except:
+        if conf.sim_mat_type == 'binary':
+            if os.path.isfile(conf.sim_mat_fn):
+                simmat = sccluster.load_similarity_matrix(conf.sim_mat_fn)
+            else:
                 die('cannot read similarity matrix: %s' % conf.sim_mat_fn)
         else:
             die('ascii format for similarity matrix not yet implemented')
 
-        if len(allevents)!=len(simmat):
-            print (len(allevents),len(simmat))
-            die('clustering stopped, number of events differs from matrix size')
+        if len(allevents) != len(simmat):
+            print(len(allevents), len(simmat))
+            die('clustering stopped, number of events ' +
+                'differs from matrix size')
 
-        new_catalog_fn=os.path.join(conf.project_dir,'events_to_be_clustered.pf')
-        model.dump_events(allevents,new_catalog_fn)
+        new_catalog_fn = os.path.join(conf.project_dir,
+                                      'events_to_be_clustered.pf')
+        model.dump_events(allevents, new_catalog_fn)
 
     else:
         if conf.metric in config.acceptable_mt_based_metrics:
-            events=[ev for ev in allevents if ev.moment_tensor is not None]
+            events = [ev for ev in allevents if ev.moment_tensor is not None]
         else:
-            events=[ev for ev in allevents]
-        new_catalog_fn=os.path.join(conf.project_dir,'events_to_be_clustered.pf')
-        model.dump_events(events,new_catalog_fn)
+            events = [ev for ev in allevents]
+        new_catalog_fn = os.path.join(conf.project_dir,
+                                      'events_to_be_clustered.pf')
+        model.dump_events(events, new_catalog_fn)
 
-        simmat=sccluster.compute_similarity_matrix(events, conf.metric)
+        simmat = sccluster.compute_similarity_matrix(events, conf.metric)
 
-    sccluster.save_similarity_matrix(simmat,simmat_temporal_fn)
+    sccluster.save_similarity_matrix(simmat, simmat_temporal_fn)
 
-    simmat_fig_fn=os.path.join(conf.project_dir,\
-                               'simmat_temporal.'+conf.figure_format)
+    simmat_fig_fn = os.path.join(conf.project_dir,
+                                 'simmat_temporal.'+conf.figure_format)
     if options.view and options.savefig:
-        scplot.view_and_savefig_similarity_matrix(simmat,simmat_fig_fn,
+        scplot.view_and_savefig_similarity_matrix(simmat, simmat_fig_fn,
                                                   'Sorted chronologically')
     else:
         if options.view:
-            scplot.view_similarity_matrix(simmat,'Sorted chronologically')
+            scplot.view_similarity_matrix(simmat, 'Sorted chronologically')
         if options.savefig:
-            scplot.savefig_similarity_matrix(simmat,simmat_fig_fn,
+            scplot.savefig_similarity_matrix(simmat, simmat_fig_fn,
                                              'Sorted chronologically')
 
     print('Similarity matrix computed and stored as "%s"' % simmat_temporal_fn)
     if options.savefig:
         print('Similarity matrix figure saved as "%s"' % simmat_fig_fn)
-
 
 
 def command_cluster(args):
@@ -299,7 +310,7 @@ def command_cluster(args):
 
     parser, options, args = cl_parse('cluster', args, setup)
 
-    if len(args)!=1:
+    if len(args) != 1:
         help_and_die(parser, 'missing argument')
     else:
         fn_config = args[0]
@@ -313,7 +324,7 @@ def command_cluster(args):
     if not os.path.isdir(conf.project_dir):
         die('project directory missing: %s' % conf.project_dir)
 
-    resdir=os.path.join(conf.project_dir,'clustering_results')
+    resdir = os.path.join(conf.project_dir, 'clustering_results')
     if not(options.force):
         if (os.path.isdir(resdir)):
             die('clustering result directory exists; use force option')
@@ -322,49 +333,52 @@ def command_cluster(args):
             shutil.rmtree(resdir)
     os.mkdir(resdir)
 
-    simmat_temporal_fn=os.path.join(conf.project_dir,'simmat_temporal.npy')
+    simmat_temporal_fn = os.path.join(conf.project_dir, 'simmat_temporal.npy')
     if not os.path.isfile(simmat_temporal_fn):
-        die('similarity matrix does not exists: %s; '+\
+        die('similarity matrix does not exists: %s; ' +
             'use seiscloud matrix first' % simmat_temporal_fn)
 
-    new_catalog_fn=os.path.join(conf.project_dir,'events_to_be_clustered.pf')
+    new_catalog_fn = os.path.join(conf.project_dir,
+                                  'events_to_be_clustered.pf')
     if not os.path.isfile(new_catalog_fn):
-        die('catalog of selected events does not exists: %s; '+\
+        die('catalog of selected events does not exists: %s; ' +
             'use seiscloud matrix first' % new_catalog_fn)
 
-    simmat_temp=sccluster.load_similarity_matrix(simmat_temporal_fn)
-    events=model.load_events(new_catalog_fn)
+    simmat_temp = sccluster.load_similarity_matrix(simmat_temporal_fn)
+    events = model.load_events(new_catalog_fn)
     eventsclusters = sccluster.dbscan(simmat_temp,
                                       conf.dbscan_nmin, conf.dbscan_eps)
     clusters = sccluster.get_clusters(events, eventsclusters)
 
-    sccluster.save_all(events,eventsclusters,clusters,conf,resdir)
-    simmat_clus=sccluster.get_simmat_clustered(events,eventsclusters,clusters,\
-                                               conf,resdir,simmat_temp)
+    sccluster.save_all(events, eventsclusters, clusters, conf, resdir)
+    simmat_clus = sccluster.get_simmat_clustered(events, eventsclusters,
+                                                 clusters, conf, resdir,
+                                                 simmat_temp)
 
-    simmat_clustered_fn=os.path.join(conf.project_dir,'simmat_clustered.npy')
-    sccluster.save_similarity_matrix(simmat_clus,simmat_clustered_fn)
+    simmat_clustered_fn = os.path.join(conf.project_dir,
+                                       'simmat_clustered.npy')
+    sccluster.save_similarity_matrix(simmat_clus, simmat_clustered_fn)
 
     print('I run seiscloud for the project in "%s"' % conf.project_dir)
     print(str(len(clusters)-1)+' cluster(s) found')
 
-    simmat_fig_fn=os.path.join(conf.project_dir,\
-                               'simmat_clustered.'+conf.figure_format)
+    simmat_fig_fn = os.path.join(conf.project_dir,
+                                 'simmat_clustered.'+conf.figure_format)
     if options.view and options.savefig:
-        scplot.view_and_savefig_similarity_matrix(simmat_clus,simmat_fig_fn,
+        scplot.view_and_savefig_similarity_matrix(simmat_clus, simmat_fig_fn,
                                                   'Sorted after clustering')
     else:
         if options.view:
-            scplot.view_similarity_matrix(simmat_clus,'Sorted after clustering')
+            scplot.view_similarity_matrix(simmat_clus,
+                                          'Sorted after clustering')
         if options.savefig:
-            scplot.savefig_similarity_matrix(simmat_clus,simmat_fig_fn,
+            scplot.savefig_similarity_matrix(simmat_clus, simmat_fig_fn,
                                              'Sorted after clustering')
 
     print('Similarity matrix after clustering computed and stored as "%s"'
-            % simmat_clustered_fn)
+          % simmat_clustered_fn)
     if options.savefig:
         print('Similarity matrix figure saved as "%s"' % simmat_fig_fn)
-
 
 
 def command_plot(args):
@@ -380,7 +394,7 @@ def command_plot(args):
 
     parser, options, args = cl_parse('plot', args, setup)
 
-    if len(args)!=1:
+    if len(args) != 1:
         help_and_die(parser, 'missing argument')
     else:
         fn_config = args[0]
@@ -394,12 +408,12 @@ def command_plot(args):
     if not os.path.isdir(conf.project_dir):
         die('project directory missing: %s' % conf.project_dir)
 
-    resdir=os.path.join(conf.project_dir,'clustering_results')
+    resdir = os.path.join(conf.project_dir, 'clustering_results')
     if not os.path.isdir(resdir):
         die('clustering results missing: %s' % resdir)
 
-    plotdir=os.path.join(conf.project_dir,'clustering_plots')
-    resdir=os.path.join(conf.project_dir,'clustering_results')
+    plotdir = os.path.join(conf.project_dir, 'clustering_plots')
+    resdir = os.path.join(conf.project_dir, 'clustering_results')
     if not(options.force):
         if (os.path.isdir(plotdir)):
             die('clustering plot directory exists; use force option')
@@ -408,27 +422,30 @@ def command_plot(args):
             shutil.rmtree(plotdir)
     os.mkdir(plotdir)
 
-    simmat_temporal_fn=os.path.join(conf.project_dir,'simmat_temporal.npy')
-    simmat_clustered_fn=os.path.join(conf.project_dir,'simmat_clustered.npy')
+    simmat_temporal_fn = os.path.join(conf.project_dir, 'simmat_temporal.npy')
+    simmat_clustered_fn = os.path.join(conf.project_dir,
+                                       'simmat_clustered.npy')
     if not os.path.isfile(simmat_temporal_fn):
-        die('similarity matrix does not exists: %s; '+\
+        die('similarity matrix does not exists: %s; ' +
             'use seiscloud matrix first' % simmat_temporal_fn)
     if not os.path.isfile(simmat_clustered_fn):
-        die('similarity matrix does not exists: %s; '+\
+        die('similarity matrix does not exists: %s; ' +
             'use seiscloud matrix first' % simmat_clustered_fn)
 
-    new_catalog_fn=os.path.join(conf.project_dir,'events_to_be_clustered.pf')
+    new_catalog_fn = os.path.join(conf.project_dir,
+                                  'events_to_be_clustered.pf')
     if not os.path.isfile(new_catalog_fn):
-        die('catalog of selected events does not exists: %s; '+\
-            'use seiscloud matrix and seiscloud cluster first' % new_catalog_fn)
+        die('catalog of selected events does not exists: %s; ' +
+            'use seiscloud matrix and seiscloud cluster first'
+            % new_catalog_fn)
 
-    events=model.load_events(new_catalog_fn)
+    events = model.load_events(new_catalog_fn)
     eventsclusters = sccluster.load_obj(
-                     os.path.join(resdir,'processed.eventsclusters'))
-    clusters =  sccluster.load_obj(
-                     os.path.join(resdir,'processed.clusters'))
+                     os.path.join(resdir, 'processed.eventsclusters'))
+    clusters = sccluster.load_obj(
+                     os.path.join(resdir, 'processed.clusters'))
 
-    scplot.plot_all(events,eventsclusters,clusters,conf,plotdir)
+    scplot.plot_all(events, eventsclusters, clusters, conf, plotdir)
 
     print('Seiscloud plots prepared in "%s"' % plotdir)
 

@@ -1,9 +1,12 @@
 '''This module provides basic cluster processing for seismic events.'''
 
-import collections, operator
-import math, os, sys, pickle
+import collections
+import operator
+import math
+import os
+import pickle
 import numpy as num
-from pyrocko import moment_tensor, orthodrome, model, io
+from pyrocko import moment_tensor, orthodrome, model
 
 epsilon = 1e-6
 km = 1000.
@@ -28,7 +31,6 @@ class ClusterError(Exception):
     pass
 
 
-
 def save_obj(obj, name):
     '''
     Save an object (clustering results)
@@ -37,14 +39,12 @@ def save_obj(obj, name):
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
 
-
 def load_obj(name):
     '''
     Load an object (clustering results)
     '''
     with open(name + '.pkl', 'rb') as f:
         return pickle.load(f)
-
 
 
 def dbscan(simmat, nmin, eps):
@@ -130,7 +130,7 @@ def dbscan(simmat, nmin, eps):
 #   resorting data clusters (noise remains as -1)
     clustersizes = []
     for icl in range(n_clusters):
-        lencl=len ([ev for ev in eventsclusters if ev==icl])
+        lencl = len([ev for ev in eventsclusters if ev == icl])
         clustersizes.append([icl, lencl])
 #    for icl in range(n_clusters):
 #        clustersizes.append([icl, 0])
@@ -474,26 +474,24 @@ def compute_similarity_matrix(events, metric):
     return simmat
 
 
-
-def get_simmat_clustered(events,eventsclusters,clusters,conf,
-                         resdir,simmat_temp):
+def get_simmat_clustered(events, eventsclusters, clusters, conf,
+                         resdir, simmat_temp):
     '''
     Compute and return a similarity matrix after clustering
     '''
-    nev=len(events)
-    clevs=[]
-    for iev,ev in enumerate(events):
-        clevs.append([eventsclusters[iev],iev])
+    nev = len(events)
+    clevs = []
+    for iev, ev in enumerate(events):
+        clevs.append([eventsclusters[iev], iev])
     clevs.sort(key=operator.itemgetter(0))
 
-    simmat2 = num.zeros((nev,nev))
-    for i,clevi in enumerate(clevs):
-        indi=clevi[1]
-        for j,clevj in enumerate(clevs):
-            indj=clevj[1]
-            simmat2[i, j] = simmat_temp[indi,indj]
+    simmat2 = num.zeros((nev, nev))
+    for i, clevi in enumerate(clevs):
+        indi = clevi[1]
+        for j, clevj in enumerate(clevs):
+            indj = clevj[1]
+            simmat2[i, j] = simmat_temp[indi, indj]
     return simmat2
-
 
 
 def load_similarity_matrix(fname):
@@ -505,35 +503,34 @@ def load_similarity_matrix(fname):
     return simmat
 
 
-def save_similarity_matrix(simmat,fname):
+def save_similarity_matrix(simmat, fname):
     '''
     Save a binary similarity matrix from file
     '''
 
-    num.save(fname,simmat)
+    num.save(fname, simmat)
 
 
-
-def save_all(events,eventsclusters,clusters,conf,resdir):
+def save_all(events, eventsclusters, clusters, conf, resdir):
     '''
     Save all results of the clustering analysis
     '''
 
     # save events of each cluster
     for cluster_id in clusters:
-        wished_events=[]
-        fn=os.path.join(resdir,'cluster.'+str(cluster_id)+'.events.pf')
-        for iev,evcl in enumerate(eventsclusters):
-            if evcl==cluster_id:
+        wished_events = []
+        fn = os.path.join(resdir, 'cluster.'+str(cluster_id)+'.events.pf')
+        for iev, evcl in enumerate(eventsclusters):
+            if evcl == cluster_id:
                 wished_events.append(events[iev])
-        model.dump_events(wished_events,fn)
+        model.dump_events(wished_events, fn)
 
     # save clusters
-    fn=os.path.join(resdir,'processed.clusters')
+    fn = os.path.join(resdir, 'processed.clusters')
     save_obj(clusters, fn)
 
     # save eventsclusters
-    fn=os.path.join(resdir,'processed.eventsclusters')
+    fn = os.path.join(resdir, 'processed.eventsclusters')
     save_obj(eventsclusters, fn)
 
     # save median of clusters
