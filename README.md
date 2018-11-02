@@ -5,7 +5,7 @@ Software for seismicity clustering.
 * Clustering using DBSCAN algorithm
 * Graphical output of cluster features
 
-Here a link to the ![Seiscloud logo](https://github.com/moscardo/seiscloud/tree/master/src/seiscloud_logo.png)
+Here a link to the ![Seiscloud logo](https://github.com/moscardo/seiscloud/tree/master/gx/seiscloud_logo.png)
 
 Please, contact me for further information and help: simone.cesca@gfz-potsdam.de
 
