@@ -547,12 +547,8 @@ def plot_similarity_matrices(events, eventsclusters, clusters, conf, plotdir):
 
     fmatname1 = os.path.join(conf.project_dir, 'simmat_temporal.npy')
     fmatname2 = os.path.join(conf.project_dir, 'simmat_clustered.npy')
-    if os.path.isdir(fmatname1) and os.path.isdir(fmatname2):
-        simmat1 = num.load(fmatname1)
-        simmat2 = num.load(fmatname2)
-    else:
-        sys.exit("ERROR: Problem reading, " +
-                 str(fmatname1)+' and/or '+str(fmatname2))
+    simmat1 = num.load(fmatname1)
+    simmat2 = num.load(fmatname2)
     nev = len(simmat1)
 
     nclusters = len(clusters)
