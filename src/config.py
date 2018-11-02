@@ -99,9 +99,9 @@ class SeiscloudConfig(Object):
     map_radius = Float.T(
                     help='Radius of map plots (m); if None, it is calculated',
                     default=500000.)
+    sw_filterevent = Bool.T(
+                    help='Filter events for plotting', default=False)
 #    sw_findcenters = Bool.T(
-#                    help='Maximum considered spatial distance', default=False)
-#    sw_filterevent = Bool.T(
 #                    help='Maximum considered spatial distance', default=False)
 #    sw_cumulus = Bool.T(
 #                    help='Maximum considered spatial distance', default=False)
