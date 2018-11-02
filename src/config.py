@@ -94,17 +94,19 @@ class SeiscloudConfig(Object):
     figure_format = String.T(
                     help='Format of output figures (pdf|png)',
                     default='png')
+    sw_manual_radius = Bool.T(
+                    help='Choose manually the map plot radius', default=False)
     map_radius = Float.T(
                     help='Radius of map plots (m); if None, it is calculated',
-                    default=None)
-    sw_findcenters = Bool.T(
-                    help='Maximum considered spatial distance', default=False)
-    sw_filterevent = Bool.T(
-                    help='Maximum considered spatial distance', default=False)
-    sw_cumulus = Bool.T(
-                    help='Maximum considered spatial distance', default=False)
-    sw_include_edge = Bool.T(
-                    help='Maximum considered spatial distance', default=False)
+                    default=500000.)
+#    sw_findcenters = Bool.T(
+#                    help='Maximum considered spatial distance', default=False)
+#    sw_filterevent = Bool.T(
+#                    help='Maximum considered spatial distance', default=False)
+#    sw_cumulus = Bool.T(
+#                    help='Maximum considered spatial distance', default=False)
+#    sw_include_edge = Bool.T(
+#                    help='Include edges of the clusters', default=False)
 
 
 def generate_default_config():

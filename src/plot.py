@@ -305,7 +305,7 @@ def plot_spatial_with_dcs(events, eventsclusters, clusters, conf, plotdir):
         center = od.Loc(0.5*(latmin+latmax), 0.5*(lonmin+lonmax))
 
     # Map size
-    if conf.map_radius is not None:
+    if conf.sw_manual_radius:
         safe_radius = conf.map_radius
     else:
         corners = [od.Loc(latmin, lonmin), od.Loc(latmin, lonmax)]
