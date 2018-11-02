@@ -235,10 +235,11 @@ def command_matrix(args):
         die('similarity matrix exists: %s; use force option'
             % simmat_temporal_fn)
 
-    if os.path.isfile(conf.catalog_fn):
-        allevents = model.load_events(conf.catalog_fn)
+    catalog_ref_fn = os.path.join(conf.project_dir, 'catalog.pf')
+    if os.path.isfile(catalog_ref_fn):
+        allevents = model.load_events(catalog_ref_fn)
     else:
-        die('catalog missing: %s' % conf.catalog_fn)
+        die('catalog missing: %s' % catalog_ref_fn)
 
     if conf.sw_simmat:
         if not os.path.isfile(conf.sim_mat_fn):
