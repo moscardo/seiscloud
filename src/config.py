@@ -87,7 +87,7 @@ class SeiscloudConfig(Object):
                     help='Maximum magnitude', default=10.)
     euclidean_max = Float.T(
                     help='Maximum considered spatial distance',
-                    default=1000000.)
+                    default=500000.)
     intertime_max = Float.T(
                     help='Maximum considered time based distance (s)',
                     default=86400.)
@@ -96,7 +96,7 @@ class SeiscloudConfig(Object):
                     default='png')
     map_radius = Float.T(
                     help='Radius of map plots (m); if None, it is calculated',
-                    default=1000000.)
+                    default=None)
     sw_findcenters = Bool.T(
                     help='Maximum considered spatial distance', default=False)
     sw_filterevent = Bool.T(

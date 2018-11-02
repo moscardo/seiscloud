@@ -589,6 +589,10 @@ def plot_similarity_matrices(events, eventsclusters, clusters, conf, plotdir):
     plt.title("Sorted after clustering")
 #    plt.show()
 
+    figname = os.path.join(plotdir,
+                           'plot_similarity_matrices.'+conf.figure_format)
+    f.savefig(figname)
+
 
 def plot_all(events, eventsclusters, clusters, conf, plotdir):
     plot_similarity_matrices(events, eventsclusters, clusters, conf, plotdir)
