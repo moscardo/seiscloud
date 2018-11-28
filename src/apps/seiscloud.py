@@ -363,7 +363,7 @@ def command_cluster(args):
     sccluster.save_similarity_matrix(simmat_clus, simmat_clustered_fn)
 
     print('I run seiscloud for the project in "%s"' % conf.project_dir)
-    print(clusters[0])
+    print(eventsclusters)
     print(str(len(clusters)-1)+' cluster(s) found')
 
     simmat_fig_fn = os.path.join(conf.project_dir,
