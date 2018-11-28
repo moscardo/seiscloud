@@ -352,6 +352,10 @@ def command_cluster(args):
     eventsclusters = sccluster.dbscan(simmat_temp,
                                       conf.dbscan_nmin, conf.dbscan_eps)
     clusters = sccluster.get_clusters(events, eventsclusters)
+    if min(eventsclusters) == -1:
+        noise_cluster_empty = False
+    else:
+        noise_cluster_empty = True
 
     sccluster.save_all(events, eventsclusters, clusters, conf, resdir)
     simmat_clus = sccluster.get_simmat_clustered(events, eventsclusters,
@@ -363,8 +367,10 @@ def command_cluster(args):
     sccluster.save_similarity_matrix(simmat_clus, simmat_clustered_fn)
 
     print('I run seiscloud for the project in "%s"' % conf.project_dir)
-    print(eventsclusters)
-    print(str(len(clusters)-1)+' cluster(s) found')
+    n_clusters = len(clusters)
+    if not noise_cluster_empty:
+        n_clusters = n_clusters - 1
+    print(str(n_clusters)+' cluster(s) found')
 
     simmat_fig_fn = os.path.join(conf.project_dir,
                                  'simmat_clustered.'+conf.figure_format)
