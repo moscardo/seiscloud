@@ -352,10 +352,10 @@ def command_cluster(args):
     eventsclusters = sccluster.dbscan(simmat_temp,
                                       conf.dbscan_nmin, conf.dbscan_eps)
     clusters = sccluster.get_clusters(events, eventsclusters)
-    if min(eventsclusters) == -1:
-        noise_cluster_empty = False
-    else:
-        noise_cluster_empty = True
+#    if min(eventsclusters) == -1:
+#        noise_cluster_empty = False
+#    else:
+#        noise_cluster_empty = True
 
     sccluster.save_all(events, eventsclusters, clusters, conf, resdir)
     simmat_clus = sccluster.get_simmat_clustered(events, eventsclusters,

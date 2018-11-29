@@ -552,7 +552,8 @@ def plot_similarity_matrices(events, eventsclusters, clusters, conf, plotdir):
     nev = len(simmat1)
 
     nclusters = len(clusters)
-    cl_sizes = [len(clusters[i-1]) for i in range(nclusters)]
+#    cl_sizes = [len(clusters[i-1]) for i in range(nclusters)]
+    cl_sizes = [len(clusters[i]) for i in range(nclusters)]
     cl_cumul_sizes = [sum(cl_sizes[:i+1]) for i in range(len(cl_sizes))]
 
 #    plt.figure(1)
