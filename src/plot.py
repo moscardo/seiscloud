@@ -614,7 +614,7 @@ def plot_medians_meca(events, eventsclusters, clusters, conf, plotdir):
             median_mt, axes,
             beachball_type='full',
             size=100.,
-            position=(10.*(icl+0.5)/nclusters, 2.,
+            position=(10.*(icl+0.5)/nclusters), 2.,
             color_t=cluster_to_color(cl),
             alpha=1.0,
             linewidth=1.0)
