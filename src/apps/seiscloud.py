@@ -385,6 +385,14 @@ def command_cluster(args):
             scplot.savefig_similarity_matrix(simmat_clus, simmat_fig_fn,
                                              'Sorted after clustering')
 
+    for cluster in clusters:
+        selevents=clusters[cluster]
+        median = sccluster.get_median(selevents, conf)
+        fn_median = os.path.join(resdir,
+                                 'median_cluster' + str(cluster) + '.pf')
+        model.dump_events([median],fn_median)
+#        print(cluster,len(selevents))
+
     print('Similarity matrix after clustering computed and stored as "%s"'
           % simmat_clustered_fn)
     if options.savefig:

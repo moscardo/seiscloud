@@ -10,6 +10,7 @@ from pyrocko import model, gmtpy
 from pyrocko.automap import Map
 from pyrocko import orthodrome as od
 from pyrocko import moment_tensor as pmt
+from pyrocko.plot import beachball
 from matplotlib import dates, colors
 
 epsilon = 1e-6
@@ -596,6 +597,36 @@ def plot_similarity_matrices(events, eventsclusters, clusters, conf, plotdir):
     f.savefig(figname)
 
 
+def plot_medians_meca(events, eventsclusters, clusters, conf, plotdir):
+
+    nclusters = len(clusters)
+
+    f = plt.figure(figsize=(10., 4.))
+    f.subplots_adjust(left=0., right=1., bottom=0., top=1.)
+    axes = f.add_subplot(1, 1, 1)
+
+    for icl, cl in enumerate(clusters):
+        median = model.load_events(os.path.join(conf.project_dir,
+                                   'median_cluster'+str(cl)+'.pf'))
+        median_mt = median.moment_tensor()
+
+        beachball.plot_beachball_mpl(
+            median_mt, axes,
+            beachball_type='full',
+            size=100.,
+            position=(10.*(icl+0.5)/nclusters, 2.,
+            color_t=cluster_to_color(cl),
+            alpha=1.0,
+            linewidth=1.0)
+
+    axes.set_xlim(0., 10.)
+    axes.set_ylim(0., 10.)
+    axes.set_axis_off()
+    figname = os.path.join(plotdir,
+                           'medians_meca.'+conf.figure_format)
+    f.savefig(figname)
+
+
 def plot_all(events, eventsclusters, clusters, conf, plotdir):
     plot_similarity_matrices(events, eventsclusters, clusters, conf, plotdir)
     plot_tm(events, eventsclusters, clusters, conf, plotdir)
@@ -604,3 +635,4 @@ def plot_all(events, eventsclusters, clusters, conf, plotdir):
     plot_hudson(events, eventsclusters, clusters, conf, plotdir)
     plot_spatial(events, eventsclusters, clusters, conf, plotdir)
     plot_spatial_with_dcs(events, eventsclusters, clusters, conf, plotdir)
+    plot_medians_meca(events, eventsclusters, clusters, conf, plotdir)

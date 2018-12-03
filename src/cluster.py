@@ -494,6 +494,25 @@ def get_simmat_clustered(events, eventsclusters, clusters, conf,
     return simmat2
 
 
+def get_median(events, conf):
+    '''
+    Return the event, computed according to the used metric
+    '''
+    for i, evi in enumerate(events):
+        cumul_d = 0.
+        for j, evj in enumerate(events):
+            d =  get_distance(evi, evj, conf.metric)
+            cumul_d = cumul_d + d
+        if i == 0:
+            min_cumul_d = cumul_d
+            median = evi
+        else:
+            if cumul_d <= min_cumul_d:
+                min_cumul_d = cumul_d
+                median = evi
+    return median
+
+
 def load_similarity_matrix(fname):
     '''
     Load a binary similarity matrix from file
