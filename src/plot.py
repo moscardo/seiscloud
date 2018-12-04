@@ -33,9 +33,7 @@ def get_axis_coords(events):
     '''
     xs, ys = [], []
 
-    events_with_mt = [ev for ev in events if ev.moment_tensor is not None]
-
-    for ev in events_with_mt:
+    for ev in events:
         pax = ev.moment_tensor.p_axis()
         tax = ev.moment_tensor.t_axis()
         bax = ev.moment_tensor.null_axis()
@@ -45,10 +43,10 @@ def get_axis_coords(events):
 
         if p[2] < 0:
             p = [-p[0], -p[1], -p[2]]
-            if t[2] < 0:
-                t = [-t[0], -t[1], -t[2]]
-            if b[2] < 0:
-                b = [-b[0], -b[1], -b[2]]
+        if t[2] < 0:
+            t = [-t[0], -t[1], -t[2]]
+        if b[2] < 0:
+            b = [-b[0], -b[1], -b[2]]
 
         px, py = CartesianToLambert(p[1], p[0], -p[2])
         tx, ty = CartesianToLambert(t[1], t[0], -t[2])
@@ -82,9 +80,7 @@ def get_triangle_coords(events):
     '''
     xs, ys, cs = [], [], []
 
-    events_with_mt = [ev for ev in events if ev.moment_tensor is not None]
-
-    for ev in events_with_mt:
+    for ev in events:
         pax = ev.moment_tensor.p_axis()
         tax = ev.moment_tensor.t_axis()
         bax = ev.moment_tensor.null_axis()
@@ -444,8 +440,13 @@ def plot_triangle(events, eventsclusters, clusters, conf, plotdir):
     '''
     Plot a triangular diagram for the seismicity clusters
     '''
-    xs, ys, cs = get_triangle_coords(events)
-    colors = [cluster_to_color(clid) for clid in eventsclusters]
+    events_with_mt = []
+    cols = []
+    for iev, ev in enumerate(events):
+        if ev.moment_tensor is not None:
+            events_with_mt.append(ev)
+            cols.append(cluster_to_color(eventsclusters[iev]))
+    xs, ys, cs = get_triangle_coords(events_with_mt)
 
     f = plt.figure(figsize=(10, 10), facecolor='w', edgecolor='k')
     f.suptitle('Triangular diagram for seismicity clusters', fontsize=14)
@@ -453,7 +454,7 @@ def plot_triangle(events, eventsclusters, clusters, conf, plotdir):
     plt.ylim(ymin=-1.2, ymax=1.6)
     plt.plot([-1.2247, 1.2247, 0., -1.2247],
              [-0.7070, -0.7070, 1.4144, -0.7070], c='k', lw=1.)
-    plt.scatter(xs, ys, c=colors, alpha=0.5)
+    plt.scatter(xs, ys, c=cols, alpha=0.5)
     plt.text(0., 1.44, 'Strike-Slip', fontsize=12, ha='center')
     plt.text(-1.25, -0.78, 'Normal Fault', fontsize=12, ha='center')
     plt.text(1.25, -0.78, 'Thrust Fault', fontsize=12, ha='center')
@@ -471,11 +472,17 @@ def plot_axis(events, eventsclusters, clusters, conf, plotdir):
     '''
     c1, c2, c3 = [2., 1.8], [6., 1.8], [10., 1.8]
     csize = 1.5
-    xs, ys = get_axis_coords(events)
+
+    events_with_mt = []
+    cols = []
+    for iev, ev in enumerate(events):
+        if ev.moment_tensor is not None:
+            events_with_mt.append(ev)
+            cols.append(cluster_to_color(eventsclusters[iev]))
+    xs, ys = get_axis_coords(events_with_mt)
     pxs, pys = [x[0]*csize+c1[0] for x in xs], [y[0]*csize+c1[1] for y in ys]
     txs, tys = [x[1]*csize+c2[0] for x in xs], [y[1]*csize+c2[1] for y in ys]
     bxs, bys = [x[2]*csize+c3[0] for x in xs], [y[2]*csize+c3[1] for y in ys]
-    colors = [cluster_to_color(clid) for clid in eventsclusters]
 
     f = plt.figure(figsize=(12, 4), facecolor='w', edgecolor='k')
     f.suptitle('Pressure (P), tension (T) and null (B) axis' +
@@ -488,9 +495,9 @@ def plot_axis(events, eventsclusters, clusters, conf, plotdir):
     plt.text(c3[0], 3.4, 'B axis', fontsize=12, ha='center')
     plt.axis('off')
 
-    plt.scatter(pxs, pys, c=colors, alpha=0.5)
-    plt.scatter(txs, tys, c=colors, alpha=0.5)
-    plt.scatter(bxs, bys, c=colors, alpha=0.5)
+    plt.scatter(pxs, pys, c=cols, alpha=0.5)
+    plt.scatter(txs, tys, c=cols, alpha=0.5)
+    plt.scatter(bxs, bys, c=cols, alpha=0.5)
 
     ax = plt.gca()
     ax.add_artist(plt.Circle((c1[0], c1[1]), csize, color='black', fill=False))
@@ -509,11 +516,11 @@ def plot_hudson(events, eventsclusters, clusters, conf, plotdir):
     Plot a Hudson diagram for the seismicity clusters
     '''
     mts = []
-    colors = []
+    cols = []
     for iev, ev in enumerate(events):
         if ev.moment_tensor is not None:
             mts.append(ev.moment_tensor)
-            colors.append(cluster_to_color(eventsclusters[iev]))
+            cols.append(cluster_to_color(eventsclusters[iev]))
     us, vs = getCoordinatesHudsonPlot(mts)
 
     f = plt.figure(figsize=(12, 10), facecolor='w', edgecolor='k')
@@ -546,7 +553,7 @@ def plot_hudson(events, eventsclusters, clusters, conf, plotdir):
 
     plt.axis('off')
 
-    plt.scatter(us, vs, c=colors, alpha=0.5)
+    plt.scatter(us, vs, c=cols, alpha=0.5)
 
     figname = os.path.join(plotdir, 'plot_hudson.'+conf.figure_format)
     f.savefig(figname)
@@ -564,8 +571,10 @@ def plot_similarity_matrices(events, eventsclusters, clusters, conf, plotdir):
 #    nclusters = len(clusters)
 #    cl_sizes = [len(clusters[i-1]) for i in range(nclusters)]
 #    cl_sizes = [len(clusters[i]) for i in range(nclusters)]
-    cl_sizes = [len(clusters[i]) for i in eventsclusters]
+    cl_sizes = [len(clusters[i]) for i in clusters]
     cl_cumul_sizes = [sum(cl_sizes[:i+1]) for i in range(len(cl_sizes))]
+#    print(nclusters)
+#    print(cl_sizes)
 
 #    plt.figure(1)
     f = plt.figure(figsize=(12, 6), facecolor='w', edgecolor='k')
@@ -619,7 +628,7 @@ def plot_medians_meca(events, eventsclusters, clusters, conf, resdir, plotdir):
                                     'median_cluster'+str(cl)+'.pf'))
         median = medians[0]
         if median.moment_tensor is not None:
-            median_mt = median.moment_tensor()
+            median_mt = median.moment_tensor
             beachball.plot_beachball_mpl(
                 median_mt, axes,
                 beachball_type='full',
@@ -630,7 +639,7 @@ def plot_medians_meca(events, eventsclusters, clusters, conf, resdir, plotdir):
                 linewidth=1.0)
 
     axes.set_xlim(0., 10.)
-    axes.set_ylim(0., 10.)
+    axes.set_ylim(0., 4.)
     axes.set_axis_off()
     figname = os.path.join(plotdir,
                            'medians_meca.'+conf.figure_format)
