@@ -498,10 +498,18 @@ def get_median(events, conf):
     '''
     Return the event, computed according to the used metric
     '''
+    if conf.sw_simmat:
+        dist_matrix = load_similarity_matrix(conf.sim_mat_fn)
+    else:
+        nev = len(events)
+        dist_matrix = num.zeros((nev, nev))
+        for i, evi in enumerate(events):
+            for j, evj in enumerate(events):
+                dist_matrix[i, j] = get_distance(evi, evj, conf.metric)
     for i, evi in enumerate(events):
         cumul_d = 0.
         for j, evj in enumerate(events):
-            d =  get_distance(evi, evj, conf.metric)
+            d = dist_matrix[i][j]
             cumul_d = cumul_d + d
         if i == 0:
             min_cumul_d = cumul_d
@@ -551,7 +559,3 @@ def save_all(events, eventsclusters, clusters, conf, resdir):
     # save eventsclusters
     fn = os.path.join(resdir, 'processed.eventsclusters')
     save_obj(eventsclusters, fn)
-
-    # save median of clusters
-    # save mean of clusters
-    # not yet implemented

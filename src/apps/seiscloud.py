@@ -386,11 +386,11 @@ def command_cluster(args):
                                              'Sorted after clustering')
 
     for cluster in clusters:
-        selevents=clusters[cluster]
+        selevents = clusters[cluster]
         median = sccluster.get_median(selevents, conf)
         fn_median = os.path.join(resdir,
                                  'median_cluster' + str(cluster) + '.pf')
-        model.dump_events([median],fn_median)
+        model.dump_events([median], fn_median)
 #        print(cluster,len(selevents))
 
     print('Similarity matrix after clustering computed and stored as "%s"'
@@ -463,7 +463,7 @@ def command_plot(args):
     clusters = sccluster.load_obj(
                      os.path.join(resdir, 'processed.clusters'))
 
-    scplot.plot_all(events, eventsclusters, clusters, conf, plotdir)
+    scplot.plot_all(events, eventsclusters, clusters, conf, resdir, plotdir)
 
     print('Seiscloud plots prepared in "%s"' % plotdir)
 

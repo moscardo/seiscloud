@@ -33,7 +33,9 @@ def get_axis_coords(events):
     '''
     xs, ys = [], []
 
-    for ev in events:
+    events_with_mt = [ev for ev in events if ev.moment_tensor is not None]
+
+    for ev in events_with_mt:
         pax = ev.moment_tensor.p_axis()
         tax = ev.moment_tensor.t_axis()
         bax = ev.moment_tensor.null_axis()
@@ -43,10 +45,10 @@ def get_axis_coords(events):
 
         if p[2] < 0:
             p = [-p[0], -p[1], -p[2]]
-        if t[2] < 0:
-            t = [-t[0], -t[1], -t[2]]
-        if b[2] < 0:
-            b = [-b[0], -b[1], -b[2]]
+            if t[2] < 0:
+                t = [-t[0], -t[1], -t[2]]
+            if b[2] < 0:
+                b = [-b[0], -b[1], -b[2]]
 
         px, py = CartesianToLambert(p[1], p[0], -p[2])
         tx, ty = CartesianToLambert(t[1], t[0], -t[2])
@@ -80,7 +82,9 @@ def get_triangle_coords(events):
     '''
     xs, ys, cs = [], [], []
 
-    for ev in events:
+    events_with_mt = [ev for ev in events if ev.moment_tensor is not None]
+
+    for ev in events_with_mt:
         pax = ev.moment_tensor.p_axis()
         tax = ev.moment_tensor.t_axis()
         bax = ev.moment_tensor.null_axis()
@@ -349,31 +353,32 @@ def plot_spatial_with_dcs(events, eventsclusters, clusters, conf, plotdir):
         for iev, evcl in enumerate(eventsclusters):
             if evcl == id_cluster:
                 ev = events[iev]
-                devi = ev.moment_tensor.deviatoric()
-                beachball_size = 3.*factor_symbl_size
-                mt = devi.m_up_south_east()
-                mt = mt / ev.moment_tensor.scalar_moment() \
-                    * pmt.magnitude_to_moment(5.0)
-                m6 = pmt.to6(mt)
+                if ev.moment_tensor is not None:
+                    devi = ev.moment_tensor.deviatoric()
+                    beachball_size = 3.*factor_symbl_size
+                    mt = devi.m_up_south_east()
+                    mt = mt / ev.moment_tensor.scalar_moment() \
+                        * pmt.magnitude_to_moment(5.0)
+                    m6 = pmt.to6(mt)
 
-                if m.gmt.is_gmt5():
-                    kwargs = dict(M=True, S='%s%g' %
-                                  (beachball_symbol[0],
-                                   (beachball_size)/gmtpy.cm))
-                else:
-                    kwargs = dict(S='%s%g' %
-                                  (beachball_symbol[0],
-                                   (beachball_size)*2 / gmtpy.cm))
+                    if m.gmt.is_gmt5():
+                        kwargs = dict(M=True, S='%s%g' %
+                                      (beachball_symbol[0],
+                                       (beachball_size)/gmtpy.cm))
+                    else:
+                        kwargs = dict(S='%s%g' %
+                                      (beachball_symbol[0],
+                                       (beachball_size)*2 / gmtpy.cm))
 
-                data = (ev.lon, ev.lat, 10) + tuple(m6) + (1, 0, 0)
+                    data = (ev.lon, ev.lat, 10) + tuple(m6) + (1, 0, 0)
 
-                m.gmt.psmeca(
-                    in_rows=[data],
-                    G=g_col,
-                    E='white',
-                    W='1p,%s' % g_col,
-                    *m.jxyr,
-                    **kwargs)
+                    m.gmt.psmeca(
+                        in_rows=[data],
+                        G=g_col,
+                        E='white',
+                        W='1p,%s' % g_col,
+                        *m.jxyr,
+                        **kwargs)
 
     figname = os.path.join(plotdir, 'plot_map_with_dcs.'+conf.figure_format)
     m.save(figname)
@@ -503,8 +508,12 @@ def plot_hudson(events, eventsclusters, clusters, conf, plotdir):
     '''
     Plot a Hudson diagram for the seismicity clusters
     '''
-    colors = [cluster_to_color(clid) for clid in eventsclusters]
-    mts = [ev.moment_tensor for ev in events]
+    mts = []
+    colors = []
+    for iev, ev in enumerate(events):
+        if ev.moment_tensor is not None:
+            mts.append(ev.moment_tensor)
+            colors.append(cluster_to_color(eventsclusters[iev]))
     us, vs = getCoordinatesHudsonPlot(mts)
 
     f = plt.figure(figsize=(12, 10), facecolor='w', edgecolor='k')
@@ -552,7 +561,7 @@ def plot_similarity_matrices(events, eventsclusters, clusters, conf, plotdir):
     simmat2 = num.load(fmatname2)
     nev = len(simmat1)
 
-    nclusters = len(clusters)
+#    nclusters = len(clusters)
 #    cl_sizes = [len(clusters[i-1]) for i in range(nclusters)]
 #    cl_sizes = [len(clusters[i]) for i in range(nclusters)]
     cl_sizes = [len(clusters[i]) for i in eventsclusters]
@@ -597,7 +606,7 @@ def plot_similarity_matrices(events, eventsclusters, clusters, conf, plotdir):
     f.savefig(figname)
 
 
-def plot_medians_meca(events, eventsclusters, clusters, conf, plotdir):
+def plot_medians_meca(events, eventsclusters, clusters, conf, resdir, plotdir):
 
     nclusters = len(clusters)
 
@@ -606,18 +615,19 @@ def plot_medians_meca(events, eventsclusters, clusters, conf, plotdir):
     axes = f.add_subplot(1, 1, 1)
 
     for icl, cl in enumerate(clusters):
-        median = model.load_events(os.path.join(conf.project_dir,
-                                   'median_cluster'+str(cl)+'.pf'))
-        median_mt = median.moment_tensor()
-
-        beachball.plot_beachball_mpl(
-            median_mt, axes,
-            beachball_type='full',
-            size=100.,
-            position=((10.*(icl+0.5)/nclusters), 2.),
-            color_t=cluster_to_color(cl),
-            alpha=1.0,
-            linewidth=1.0)
+        medians = model.load_events(os.path.join(resdir,
+                                    'median_cluster'+str(cl)+'.pf'))
+        median = medians[0]
+        if median.moment_tensor is not None:
+            median_mt = median.moment_tensor()
+            beachball.plot_beachball_mpl(
+                median_mt, axes,
+                beachball_type='full',
+                size=100.,
+                position=((10.*(icl+0.5)/nclusters), 2.),
+                color_t=cluster_to_color(cl),
+                alpha=1.0,
+                linewidth=1.0)
 
     axes.set_xlim(0., 10.)
     axes.set_ylim(0., 10.)
@@ -627,7 +637,7 @@ def plot_medians_meca(events, eventsclusters, clusters, conf, plotdir):
     f.savefig(figname)
 
 
-def plot_all(events, eventsclusters, clusters, conf, plotdir):
+def plot_all(events, eventsclusters, clusters, conf, resdir, plotdir):
     plot_similarity_matrices(events, eventsclusters, clusters, conf, plotdir)
     plot_tm(events, eventsclusters, clusters, conf, plotdir)
     plot_triangle(events, eventsclusters, clusters, conf, plotdir)
@@ -635,4 +645,4 @@ def plot_all(events, eventsclusters, clusters, conf, plotdir):
     plot_hudson(events, eventsclusters, clusters, conf, plotdir)
     plot_spatial(events, eventsclusters, clusters, conf, plotdir)
     plot_spatial_with_dcs(events, eventsclusters, clusters, conf, plotdir)
-    plot_medians_meca(events, eventsclusters, clusters, conf, plotdir)
+    plot_medians_meca(events, eventsclusters, clusters, conf, resdir, plotdir)
