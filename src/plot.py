@@ -596,12 +596,12 @@ def plot_similarity_matrices(events, eventsclusters, clusters, conf, plotdir):
     plt.ylim(ymax=nev-0.5, ymin=-0.5)
 
     for ccs in cl_cumul_sizes:
-        x = [0, nev]
-        y = [ccs, ccs]
+        x = [-0.5, nev-0.5]
+        y = [ccs-0.5, ccs-0.5]
         plt.plot(x, y, 'red', ls='--', lw=1)
 #        plt.plot(x,y,'midnightblue',ls='--',lw=1)
-        y = [0, nev]
-        x = [ccs, ccs]
+        y = [-0.5, nev-0.5]
+        x = [ccs-0.5, ccs-0.5]
         plt.plot(x, y, 'red', ls='--', lw=1)
 #        plt.plot(x,y,'midnightblue',ls='--',lw=1)
 
