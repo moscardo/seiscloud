@@ -129,8 +129,8 @@ def view_and_savefig_similarity_matrix(simmat, figname, title):
     plt.subplot(grid[0:9, 0:9])
 
     plt.imshow(simmat, interpolation='none', cmap='GnBu_r')
-    plt.xlim(xmax=nev, xmin=0)
-    plt.ylim(ymax=nev, ymin=0)
+    plt.xlim(xmax=nev-0.5, xmin=-0.5)
+    plt.ylim(ymax=nev-0.5, ymin=-0.5)
 
     plt.xlabel("Event number")
     plt.ylabel("Event number")
@@ -151,8 +151,8 @@ def view_similarity_matrix(simmat, title):
     plt.subplot(grid[0:9, 0:9])
 
     plt.imshow(simmat, interpolation='none', cmap='GnBu_r')
-    plt.xlim(xmax=nev, xmin=0)
-    plt.ylim(ymax=nev, ymin=0)
+    plt.xlim(xmax=nev-0.5, xmin=-0.5)
+    plt.ylim(ymax=nev-0.5, ymin=-0.5)
 
     plt.xlabel("Event number")
     plt.ylabel("Event number")
@@ -172,8 +172,8 @@ def savefig_similarity_matrix(simmat, figname, title):
     plt.subplot(grid[0:9, 0:9])
 
     plt.imshow(simmat, interpolation='none', cmap='GnBu_r')
-    plt.xlim(xmax=nev, xmin=0)
-    plt.ylim(ymax=nev, ymin=0)
+    plt.xlim(xmax=nev-0.5, xmin=-0.5)
+    plt.ylim(ymax=nev-0.5, ymin=-0.5)
 
     plt.xlabel("Event number")
     plt.ylabel("Event number")
