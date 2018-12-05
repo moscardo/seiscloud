@@ -592,8 +592,8 @@ def plot_similarity_matrices(events, eventsclusters, clusters, conf, plotdir):
     plt.subplot(122)
     plt.imshow(simmat2, interpolation='none', cmap='GnBu_r')
 #    plt.imshow(simmat2,interpolation='none',cmap='coolwarm_r')
-    plt.xlim(xmax=nev, xmin=0)
-    plt.ylim(ymax=nev, ymin=0)
+    plt.xlim(xmax=nev-0.5, xmin=-0.5)
+    plt.ylim(ymax=nev-0.5, ymin=-0.5)
 
     for ccs in cl_cumul_sizes:
         x = [0, nev]
