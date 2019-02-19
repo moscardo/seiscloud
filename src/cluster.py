@@ -335,9 +335,9 @@ def get_distance_hypo(eventi, eventj):
     '''
     maxdist_km = 1000.
     a_lats, a_lons, b_lats, b_lons = \
-        eventi.north, eventi.east, eventj.north, eventj.east
+        eventi.lat, eventi.lon, eventj.lat, eventj.lon
 
-    a_dep, b_dep = eventi.down, eventj.down
+    a_dep, b_dep = eventi.depth, eventj.depth
 
     if (a_lats == b_lats) and (a_lons == b_lons) and (a_dep == b_dep):
         d = 0.
@@ -346,9 +346,9 @@ def get_distance_hypo(eventi, eventj):
             a_lats, a_lons, b_lats, b_lons)
 
         distance_km = distance_m / 1000.
-        ddepth = abs(eventi.down - eventj.down)
+        ddepth_km = abs(eventi.depth - eventj.depth)/km
         hypo_distance_km = math.sqrt(
-            distance_km * distance_km + ddepth * ddepth)
+            distance_km * distance_km + ddepth_km * ddepth_km)
 
         # maxdist = float(inv_param['EUCLIDEAN_MAX'])
 
@@ -366,11 +366,9 @@ def get_distance_epi(eventi, eventj):
     maxdist_km = 1000.
 
     a_lats, a_lons, b_lats, b_lons = \
-        eventi.north, eventi.east, eventj.north, eventj.east
+        eventi.lat, eventi.lon, eventj.lat, eventj.lon
 
-    a_dep, b_dep = eventi.down, eventj.down
-
-    if (a_lats == b_lats) and (a_lons == b_lons) and (a_dep == b_dep):
+    if (a_lats == b_lats) and (a_lons == b_lons):
         d = 0.
     else:
         distance_m = orthodrome.distance_accurate50m_numpy(
