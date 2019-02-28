@@ -383,7 +383,7 @@ def plot_spatial_with_dcs(events, eventsclusters, clusters, conf, plotdir):
 
 def plot_tm(events, eventsclusters, clusters, conf, plotdir):
     '''
-    Plot magnitude vs time for the eismicity clusters
+    Plot magnitude vs time for the seismicity clusters
     '''
     times = [ev.time for ev in events]
     orig_dates = [datetime.datetime.fromtimestamp(ev.time) for ev in events]
@@ -432,6 +432,62 @@ def plot_tm(events, eventsclusters, clusters, conf, plotdir):
     plt.subplots_adjust(bottom=.3)
 
     figname = os.path.join(plotdir, 'plot_tm.'+conf.figure_format)
+    f.savefig(figname)
+#    plt.show()
+
+
+def plot_td(events, eventsclusters, clusters, conf, plotdir):
+    '''
+    Plot depth vs time for the seismicity clusters
+    '''
+    times = [ev.time for ev in events]
+    orig_dates = [datetime.datetime.fromtimestamp(ev.time) for ev in events]
+    mpl_dates = dates.date2num(orig_dates)
+    deps = [ev.depth/km for ev in events]
+    colors = [cluster_to_color(clid) for clid in eventsclusters]
+
+    dates_format = dates.DateFormatter('%Y-%m-%d')
+
+    if conf.sw_filterevent:
+        tmin, tmax = conf.tmin, conf.tmax
+        depmin, depmax = conf.depthmin/km, conf.depthmax/km
+    else:
+        if (max(times)-min(times))/86400. > 720.:
+            dt = 86400.
+            dates_loc = dates.YearLocator()
+        elif (max(times)-min(times))/86400. > 10.:
+            dt = 86400.
+            dates_loc = dates.MonthLocator()
+        elif (max(times)-min(times))/3600. > 10.:
+            dt = 3600.
+            dates_loc = dates.DayLocator()
+        else:
+            dt = 1.
+            dates_loc = dates.HourLocator()
+            dates_format = dates.DateFormatter('%Y-%m-%d %h:%m:%s')
+        tmin, tmax = min(times)-dt, max(times)+dt
+        depmin, depmax = min(deps)-0.1, max(deps)+0.1
+    dmin = dates.date2num(datetime.datetime.fromtimestamp(tmin))
+    dmax = dates.date2num(datetime.datetime.fromtimestamp(tmax))
+
+    f = plt.figure()
+    f.suptitle('Temporal evolution of seismicity clusters', fontsize=14)
+
+    ax = f.add_subplot(111)
+    ax.scatter(mpl_dates, deps, s=15., c=colors, alpha=0.5)
+
+    ax.xaxis.set_major_locator(dates_loc)
+    ax.xaxis.set_major_formatter(dates_format)
+
+    plt.xlim(xmax=dmax, xmin=dmin)
+    plt.ylim(ymax=depmax, ymin=depmin)
+    plt.xticks(rotation=45.)
+    plt.xlabel("Time")
+    plt.ylabel("Depth [km]")
+    plt.gca().invert_yaxis()
+    plt.subplots_adjust(bottom=.3)
+
+    figname = os.path.join(plotdir, 'plot_dm.'+conf.figure_format)
     f.savefig(figname)
 #    plt.show()
 
@@ -649,6 +705,7 @@ def plot_medians_meca(events, eventsclusters, clusters, conf, resdir, plotdir):
 def plot_all(events, eventsclusters, clusters, conf, resdir, plotdir):
     plot_similarity_matrices(events, eventsclusters, clusters, conf, plotdir)
     plot_tm(events, eventsclusters, clusters, conf, plotdir)
+    plot_td(events, eventsclusters, clusters, conf, plotdir)
     plot_triangle(events, eventsclusters, clusters, conf, plotdir)
     plot_axis(events, eventsclusters, clusters, conf, plotdir)
     plot_hudson(events, eventsclusters, clusters, conf, plotdir)
