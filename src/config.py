@@ -4,7 +4,8 @@ from pyrocko.guts import Object, Float, Int, String, Bool
 
 acceptable_metrics = ['kagan_angle', 'mt_l1norm', 'mt_l2norm', 'mt_cos',
                       'mt_weighted_cos', 'principal_axis',
-                      'hypocentral', 'epicentral', 'temporal']
+                      'hypocentral', 'epicentral', 'temporal',
+                      'magnitude']
 
 acceptable_mt_based_metrics = ['kagan_angle', 'mt_l1norm', 'mt_l2norm',
                                'mt_cos', 'mt_weighted_cos', 'principal_axis']
@@ -90,7 +91,10 @@ class SeiscloudConfig(Object):
                     default=500000.)
     intertime_max = Float.T(
                     help='Maximum considered time based distance (s)',
-                    default=86400.)
+                    default=31536000.)
+    magnitude_max = Float.T(
+                    help='Maximum considered magnitude based distance',
+                    default=10.)
     figure_format = String.T(
                     help='Format of output figures (pdf|png)',
                     default='png')

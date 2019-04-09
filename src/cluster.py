@@ -400,6 +400,23 @@ def get_distance_interevent_time(eventi, eventj):
     return d
 
 
+def get_distance_magnitude(eventi, eventj):
+    '''
+    Normalized magnitude difference.
+
+    The normalization assumes largest considered difference 10.
+    '''
+
+    mi = eventi.magnitude
+    mj = eventj.magnitude
+
+    d = abs(mi - mj) / 10.
+    if d >= 1.:
+        d = 1.
+
+    return d
+
+
 def get_distance_triangle_diagram(eventi, eventj):
     '''
     Scalar product among principal axes (?).
@@ -440,6 +457,7 @@ def get_distance(eventi, eventj, metric, **kwargs):
         'hypocentral': get_distance_hypo,
         'epicentral': get_distance_epi,
         'temporal': get_distance_interevent_time,
+        'magnitude': get_distance_magnitude,
         'principal_axis': get_distance_triangle_diagram}
 
     try:
