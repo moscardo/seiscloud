@@ -193,9 +193,9 @@ def get_distance_mt_l2(eventi, eventj):
     # mjxx, mjyy, mjzz = eventj.mxx / nj, eventj.myy / nj, eventj.mzz / nj
     # mjxy, mjxz, mjyz = eventj.mxy / nj, eventj.mxz / nj, eventj.myz / nj
 
-    d = (eventi.mxx - eventj.mxx)**2 + (eventi.myy - eventj.myy)**2 + \
-        (eventi.mzz - eventj.mzz)**2 + (eventi.mxy - eventj.mxy)**2 + \
-        (eventi.mxz - eventj.mxz)**2 + (eventi.myz - eventj.myz)**2
+    d = (eventi.mnn - eventj.mnn)**2 + (eventi.mee - eventj.mee)**2 + \
+        (eventi.mdd - eventj.mdd)**2 + (eventi.mne - eventj.mne)**2 + \
+        (eventi.mnd - eventj.mnd)**2 + (eventi.med - eventj.med)**2
 
     d = 0.5 * math.sqrt(d)
 
@@ -217,9 +217,9 @@ def get_distance_mt_l1(eventi, eventj):
     # mjxx, mjyy, mjzz = eventj.mxx / nj, eventj.myy / nj, eventj.mzz / nj
     # mjxy, mjxz, mjyz = eventj.mxy / nj, eventj.mxz / nj, eventj.myz / nj
 
-    d = abs(eventi.mxx - eventj.mxx) + abs(eventi.myy - eventj.myy) + \
-        abs(eventi.mzz - eventj.mzz) + abs(eventi.mxy - eventj.mxy) + \
-        abs(eventi.mxz - eventj.mxz) + abs(eventi.myz - eventj.myz)
+    d = abs(eventi.mnn - eventj.mnn) + abs(eventi.mee - eventj.mee) + \
+        abs(eventi.mdd - eventj.mdd) + abs(eventi.mne - eventj.mne) + \
+        abs(eventi.mnd - eventj.mnd) + abs(eventi.med - eventj.med)
 
     d = 0.5 * math.sqrt(d)
 
@@ -235,29 +235,29 @@ def get_distance_mt_cos(eventi, eventj):
     '''
 
     ni = math.sqrt(
-        eventi.mxx * eventi.mxx +
-        eventi.myy * eventi.myy +
-        eventi.mzz * eventi.mzz +
-        2. * eventi.mxy * eventi.mxy +
-        2. * eventi.mxz * eventi.mxz +
-        2. * eventi.myz * eventi.myz)
+        eventi.mnn * eventi.mnn +
+        eventi.mee * eventi.mee +
+        eventi.mdd * eventi.mdd +
+        2. * eventi.mne * eventi.mne +
+        2. * eventi.mnd * eventi.mnd +
+        2. * eventi.med * eventi.med)
 
     nj = math.sqrt(
-        eventj.mxx * eventj.mxx +
-        eventj.myy * eventj.myy +
-        eventj.mzz * eventj.mzz +
-        2. * eventj.mxy * eventj.mxy +
-        2. * eventj.mxz * eventj.mxz +
-        2. * eventj.myz * eventj.myz)
+        eventj.mnn * eventj.mnn +
+        eventj.mee * eventj.mee +
+        eventj.mdd * eventj.mdd +
+        2. * eventj.mne * eventj.mne +
+        2. * eventj.mnd * eventj.mnd +
+        2. * eventj.med * eventj.med)
 
     nc = ni * nj
     innerproduct = (
-        eventi.mxx * eventj.mxx +
-        eventi.myy * eventj.myy +
-        eventi.mzz * eventj.mzz +
-        2. * eventi.mxy * eventj.mxy +
-        2. * eventi.mxz * eventj.mxz +
-        2. * eventi.myz * eventj.myz) / nc
+        eventi.mnn * eventj.mnn +
+        eventi.mee * eventj.mee +
+        eventi.mdd * eventj.mdd +
+        2. * eventi.mne * eventj.mne +
+        2. * eventi.mnd * eventj.mnd +
+        2. * eventi.med * eventj.med) / nc
 
     if innerproduct >= 1.0:
         innerproduct = 1.0
@@ -276,29 +276,29 @@ def get_distance_mt_weighted_cos(eventi, eventj, ws):
     According to Cesca et al. 2014 GJI
     '''
     ni = math.sqrt(
-        (ws[0] * eventi.mxx)**2 +
-        (ws[1] * eventi.mxy)**2 +
-        (ws[2] * eventi.myy)**2 +
-        (ws[3] * eventi.mxz)**2 +
-        (ws[4] * eventi.myz)**2 +
-        (ws[5] * eventi.mzz)**2)
+        (ws[0] * eventi.mnn)**2 +
+        (ws[1] * eventi.mne)**2 +
+        (ws[2] * eventi.mee)**2 +
+        (ws[3] * eventi.mnd)**2 +
+        (ws[4] * eventi.med)**2 +
+        (ws[5] * eventi.mdd)**2)
 
     nj = math.sqrt(
-        (ws[0] * eventj.mxx)**2 +
-        (ws[1] * eventj.mxy)**2 +
-        (ws[2] * eventj.myy)**2 +
-        (ws[3] * eventj.mxz)**2 +
-        (ws[4] * eventj.myz)**2 +
-        (ws[5] * eventj.mzz)**2)
+        (ws[0] * eventj.mnn)**2 +
+        (ws[1] * eventj.mne)**2 +
+        (ws[2] * eventj.mee)**2 +
+        (ws[3] * eventj.mnd)**2 +
+        (ws[4] * eventj.med)**2 +
+        (ws[5] * eventj.mdd)**2)
 
     nc = ni * nj
     innerproduct = (
-        ws[0] * ws[0] * eventi.mxx * eventj.mxx +
-        ws[1] * ws[1] * eventi.mxy * eventj.mxy +
-        ws[2] * ws[2] * eventi.myy * eventj.myy +
-        ws[3] * ws[3] * eventi.mxz * eventj.mxz +
-        ws[4] * ws[4] * eventi.myz * eventj.myz +
-        ws[5] * ws[5] * eventi.mzz * eventj.mzz) / nc
+        ws[0] * ws[0] * eventi.mnn * eventj.mnn +
+        ws[1] * ws[1] * eventi.mne * eventj.mne +
+        ws[2] * ws[2] * eventi.mee * eventj.mee +
+        ws[3] * ws[3] * eventi.mnd * eventj.mnd +
+        ws[4] * ws[4] * eventi.med * eventj.med +
+        ws[5] * ws[5] * eventi.mdd * eventj.mdd) / nc
 
     if innerproduct >= 1.0:
         innerproduct = 1.0
