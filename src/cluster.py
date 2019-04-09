@@ -564,8 +564,11 @@ def save_all(events, eventsclusters, clusters, conf, resdir):
     if os.path.isfile(fn):
         os.remove(fn)
     for iev, ev in enumerate(events):
-        tag = ['cluster:'+str(eventsclusters[iev])]
-        ev.tags = tag
+        tag = 'cluster:'+str(eventsclusters[iev])
+        if ev.tags is not None:
+            ev.tags.append(tag)
+        else:
+            ev.tags = [tag]
     model.dump_events(events, fn)
 
     # save events of each cluster
