@@ -383,7 +383,8 @@ def plot_spatial_with_dcs(events, eventsclusters, clusters, conf, plotdir):
 
 def plot_tm(events, eventsclusters, clusters, conf, plotdir):
     '''
-    Plot magnitude vs time for the seismicity clusters
+    Plot magnitude vs time for the seismicity clusters.
+    Plot cumulative moment vs time for the seismicity clusters.
     '''
     times = [ev.time for ev in events]
     orig_dates = [datetime.datetime.fromtimestamp(ev.time) for ev in events]
@@ -433,7 +434,100 @@ def plot_tm(events, eventsclusters, clusters, conf, plotdir):
 
     figname = os.path.join(plotdir, 'plot_tm.'+conf.figure_format)
     f.savefig(figname)
-#    plt.show()
+
+
+    times = [ev.time for ev in events]
+    orig_dates = [datetime.datetime.fromtimestamp(ev.time) for ev in events]
+    mpl_dates = dates.date2num(orig_dates)
+    colors = [cluster_to_color(clid) for clid in eventsclusters]
+
+    dates_format = dates.DateFormatter('%Y-%m-%d')
+
+    if conf.sw_filterevent:
+        tmin, tmax = conf.tmin, conf.tmax
+        magmin, magmax = conf.magmin, conf.magmax
+    else:
+        if (max(times)-min(times))/86400. > 720.:
+            dt = 86400.
+            dates_loc = dates.YearLocator()
+        elif (max(times)-min(times))/86400. > 10.:
+            dt = 86400.
+            dates_loc = dates.MonthLocator()
+        elif (max(times)-min(times))/3600. > 10.:
+            dt = 3600.
+            dates_loc = dates.DayLocator()
+        else:
+            dt = 1.
+            dates_loc = dates.HourLocator()
+            dates_format = dates.DateFormatter('%Y-%m-%d %h:%m:%s')
+        tmin, tmax = min(times)-dt, max(times)+dt
+        m0min = pmt.magnitude_to_moment(0.5*min(mags))
+        m0max = pmt.magnitude_to_moment(2.*max(mags))
+    dmin = dates.date2num(datetime.datetime.fromtimestamp(tmin))
+    dmax = dates.date2num(datetime.datetime.fromtimestamp(tmax))
+
+    f = plt.figure()
+    f.suptitle('Cumulative moment release of seismicity clusters',
+               fontsize=14)
+
+    ax = f.add_subplot(111)
+
+    cum_dates = []
+    d1 = dates.date2num(datetime.datetime.fromtimestamp(tmin))
+    cum_dates.append(d1)
+    cum_m0s = []
+    cm0 = 0.
+    cum_m0s.append(cm0)
+    for ev in events:
+        print(ev.name, ev.time)
+        new_date = dates.date2num(datetime.datetime.fromtimestamp(ev.time))
+        cum_dates.append(new_date)
+        cum_dates.append(new_date)
+        cum_m0s.append(cm0)
+        cm0 = cm0 + pmt.magnitude_to_moment(ev.magnitude)
+        cum_m0s.append(cm0)
+
+    ax.plot(cum_dates, cum_m0s, color='black', alpha=0.5)
+
+    for irun in clusters:
+        cl_events = []
+        for iev, ev in enumerate(events):
+            if irun == eventsclusters[iev]:
+                cl_events.append(ev)
+        # cl_events = [events[iev] for iev in len(events)
+        #              if irun == eventsclusters[iev]]
+        print('A', irun, cl_events)
+        cum_dates = []
+        d1 = dates.date2num(datetime.datetime.fromtimestamp(tmin))
+        cum_dates.append(d1)
+        cum_m0s = []
+        cm0 = 0.
+        cum_m0s.append(cm0)
+        color = cluster_to_color(irun)
+        for ev in cl_events:
+            print(ev.name, ev.time)
+            new_date = dates.date2num(datetime.datetime.fromtimestamp(ev.time))
+            cum_dates.append(new_date)
+            cum_dates.append(new_date)
+            cum_m0s.append(cm0)
+            cm0 = cm0 + pmt.magnitude_to_moment(ev.magnitude)
+            cum_m0s.append(cm0)
+
+        ax.plot(cum_dates, cum_m0s, color=color, alpha=0.5)
+
+    ax.xaxis.set_major_locator(dates_loc)
+    ax.xaxis.set_major_formatter(dates_format)
+
+    plt.xlim(xmax=dmax, xmin=dmin)
+    plt.ylim(ymax=m0max, ymin=m0min)
+    plt.xticks(rotation=45.)
+    plt.xlabel("Time")
+    plt.ylabel("Cumulative Scalar Moment [Nm]")
+    plt.yscale('log')
+    plt.subplots_adjust(bottom=.3)
+
+    figname = os.path.join(plotdir, 'plot_tcm0.'+conf.figure_format)
+    f.savefig(figname)
 
 
 def plot_td(events, eventsclusters, clusters, conf, plotdir):
@@ -487,7 +581,7 @@ def plot_td(events, eventsclusters, clusters, conf, plotdir):
     plt.gca().invert_yaxis()
     plt.subplots_adjust(bottom=.3)
 
-    figname = os.path.join(plotdir, 'plot_dm.'+conf.figure_format)
+    figname = os.path.join(plotdir, 'plot_td.'+conf.figure_format)
     f.savefig(figname)
 #    plt.show()
 
