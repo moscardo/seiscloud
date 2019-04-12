@@ -461,8 +461,8 @@ def plot_tm(events, eventsclusters, clusters, conf, plotdir):
             dates_loc = dates.HourLocator()
             dates_format = dates.DateFormatter('%Y-%m-%d %h:%m:%s')
         tmin, tmax = min(times)-dt, max(times)+dt
-        m0min = 0.5 * pmt.magnitude_to_moment(min(mags))
-        m0max = 2.0 * pmt.magnitude_to_moment(max(mags))
+        m0min = pmt.magnitude_to_moment(min(mags - 0.5))
+        m0max = pmt.magnitude_to_moment(max(mags + 0.5))
     dmin = dates.date2num(datetime.datetime.fromtimestamp(tmin))
     dmax = dates.date2num(datetime.datetime.fromtimestamp(tmax))
 
