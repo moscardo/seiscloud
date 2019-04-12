@@ -47,7 +47,7 @@ def load_obj(name):
         return pickle.load(f)
 
 
-def dbscan(simmat, nmin, eps):
+def dbscan(simmat, nmin, eps, sw_clusterall):
     '''
     Apply DBSCAN algorithm, reading a similarity matrix and returning a list of
     events clusters
@@ -126,6 +126,21 @@ def dbscan(simmat, nmin, eps):
                         pointingevents.append(newpointingevent)
 
     n_clusters = actualcluster + 1
+
+# assigning all events to a cluster
+    if sw_clusterall:
+        for i in range(nev):
+            if eventsclusters[i] == -1:
+                ds_to_clusters = num.zeros(n_clusters-1)
+                cluster_sizes = num.zeros(n_clusters-1)
+                for j in range(nev):
+                    d = simmat[i, j]
+                    ds_to_clusters[eventsclusters[j]] += d
+                    cluster_sizes[eventsclusters[j]] += 1.
+                for k in range(n_clusters-1):
+                    ds_to_clusters[k] = ds_to_clusters[k]/cluster_sizes[k]
+                k, = num.where(ds_to_clusters == min(ds_to_clusters))
+                eventsclusters[i] == k[0]
 
 #   resorting data clusters (noise remains as -1)
     clustersizes = []

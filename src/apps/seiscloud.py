@@ -350,7 +350,8 @@ def command_cluster(args):
     simmat_temp = sccluster.load_similarity_matrix(simmat_temporal_fn)
     events = model.load_events(new_catalog_fn)
     eventsclusters = sccluster.dbscan(simmat_temp,
-                                      conf.dbscan_nmin, conf.dbscan_eps)
+                                      conf.dbscan_nmin, conf.dbscan_eps,
+                                      conf.sw_force_cluster_all)
     clusters = sccluster.get_clusters(events, eventsclusters)
     if min(eventsclusters) == -1:
         noise_cluster_empty = False

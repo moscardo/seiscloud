@@ -105,6 +105,8 @@ class SeiscloudConfig(Object):
                     default=500000.)
     sw_filterevent = Bool.T(
                     help='Filter events for plotting', default=False)
+    sw_force_cluster_all = Bool.T(
+                    help='Force clustering of all events', default=False)
 #    sw_findcenters = Bool.T(
 #                    help='Maximum considered spatial distance', default=False)
 #    sw_cumulus = Bool.T(
