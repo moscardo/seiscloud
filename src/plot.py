@@ -461,8 +461,6 @@ def plot_tm(events, eventsclusters, clusters, conf, plotdir):
             dates_loc = dates.HourLocator()
             dates_format = dates.DateFormatter('%Y-%m-%d %h:%m:%s')
         tmin, tmax = min(times)-dt, max(times)+dt
-        m0min = pmt.magnitude_to_moment(min(mags)-0.5)
-        m0max = pmt.magnitude_to_moment(max(mags)+0.5)
     dmin = dates.date2num(datetime.datetime.fromtimestamp(tmin))
     dmax = dates.date2num(datetime.datetime.fromtimestamp(tmax))
 
@@ -486,6 +484,12 @@ def plot_tm(events, eventsclusters, clusters, conf, plotdir):
         cum_m0s.append(cm0)
         cm0 = cm0 + pmt.magnitude_to_moment(ev.magnitude)
         cum_m0s.append(cm0)
+    cum_dates.append(dmax)
+    cum_m0s.append(cm0)
+    cm0max = cm0
+
+    cm0min = pmt.magnitude_to_moment(min(mags)-0.5)
+    cm0max = 2. * cm0
 
     ax.plot(cum_dates, cum_m0s, color='black', alpha=0.5)
 
@@ -512,6 +516,8 @@ def plot_tm(events, eventsclusters, clusters, conf, plotdir):
             cum_m0s.append(cm0)
             cm0 = cm0 + pmt.magnitude_to_moment(ev.magnitude)
             cum_m0s.append(cm0)
+        cum_dates.append(dmax)
+        cum_m0s.append(cm0)
 
         ax.plot(cum_dates, cum_m0s, color=color, alpha=0.5)
 
@@ -519,7 +525,7 @@ def plot_tm(events, eventsclusters, clusters, conf, plotdir):
     ax.xaxis.set_major_formatter(dates_format)
 
     plt.xlim(xmax=dmax, xmin=dmin)
-    plt.ylim(ymax=m0max, ymin=m0min)
+    plt.ylim(ymax=cm0max, ymin=cm0min)
     plt.xticks(rotation=45.)
     plt.xlabel("Time")
     plt.ylabel("Cumulative Scalar Moment [Nm]")
