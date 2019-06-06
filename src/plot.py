@@ -350,7 +350,7 @@ def plot_spatial_with_dcs(events, eventsclusters, clusters, conf, plotdir):
             if evcl == id_cluster:
                 ev = events[iev]
                 if ev.moment_tensor is not None:
-		    factor_symbl_size = ev.magnitude
+                    factor_symbl_size = ev.magnitude
                     devi = ev.moment_tensor.deviatoric()
                     beachball_size = 3.*factor_symbl_size
                     mt = devi.m_up_south_east()
