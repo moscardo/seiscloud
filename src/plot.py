@@ -247,7 +247,7 @@ def plot_spatial(events, eventsclusters, clusters, conf, plotdir):
         radius=safe_radius,
         width=30., height=30.,
         show_grid=False,
-        show_topo=False,
+        show_topo=True,
         color_dry=(238, 236, 230),
         topo_cpt_wet='light_sea_uniform',
         topo_cpt_dry='light_land_uniform',
@@ -321,7 +321,7 @@ def plot_spatial_with_dcs(events, eventsclusters, clusters, conf, plotdir):
         radius=safe_radius,
         width=30., height=30.,
         show_grid=False,
-        show_topo=False,
+        show_topo=True,
         color_dry=(238, 236, 230),
         topo_cpt_wet='light_sea_uniform',
         topo_cpt_dry='light_land_uniform',
@@ -350,6 +350,7 @@ def plot_spatial_with_dcs(events, eventsclusters, clusters, conf, plotdir):
             if evcl == id_cluster:
                 ev = events[iev]
                 if ev.moment_tensor is not None:
+		    factor_symbl_size = ev.magnitude
                     devi = ev.moment_tensor.deviatoric()
                     beachball_size = 3.*factor_symbl_size
                     mt = devi.m_up_south_east()
