@@ -634,6 +634,12 @@ def plot_axis(events, eventsclusters, clusters, conf, plotdir):
     cols = []
     for iev, ev in enumerate(events):
         if ev.moment_tensor is not None:
+            if conf.sw_dc_axis:
+                mt = ev.moment_tensor
+                decomposition = mt.standard_decomposition()
+                (moment_dc, ratio_dc, m_dc) = decomposition[1]
+                mtdc = pmt.MomentTensor(m_dc)
+                ev.moment_tensor = mtdc
             events_with_mt.append(ev)
             cols.append(cluster_to_color(eventsclusters[iev]))
     xs, ys = get_axis_coords(events_with_mt)
