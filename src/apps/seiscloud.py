@@ -170,16 +170,27 @@ def command_init(args):
         os.mkdir(conf.project_dir)
         conf.dump(filename=os.path.join(conf.project_dir, 'seiscloud.config'))
 
-        dst = os.path.join(conf.project_dir, 'catalog.pf')
-
         if conf.catalog_origin == 'file':
             src = conf.catalog_fn
-            shutil.copyfile(src, dst)
+            try:
+                events = model.load_events(conf.catalog_fn)
+            except:
+                die('catalog file not readable: %s' % conf.catalog_fn)
         else:
             if conf.catalog_origin == 'globalcmt':
                 orig_catalog = catalog.GlobalCMT()
-            else:   # geofon
+            elif conf.catalog_origin == 'geofon':
                 orig_catalog = catalog.Geofon()
+            elif conf.catalog_origin == 'usgs':
+                orig_catalog = catalog.USGS()
+            else:
+                die('unknown remote catalog: %s' % conf.catalog_origin)
+            if conf.latmin > conf.latmax:
+                die('bad latitude range: %s %s' % (conf.latmin, conf.latmax))
+            if conf.depthmin > conf.depthmax:
+                die('bad depth range: %s %s' % (conf.depthmin, conf.depthmax))
+            if conf.magmin >= conf.magmax:
+                die('bad magnitude range: %s %s' % (conf.magmin, conf.magmax))
             events = orig_catalog.get_events(
                         time_range=(util.str_to_time(conf.tmin),
                                     util.str_to_time(conf.tmax)),
@@ -189,10 +200,33 @@ def command_init(args):
                         lonmin=conf.lonmin,
                         lonmax=conf.lonmax)
 
-            selevents = [ev for ev in events if ev.magnitude <= conf.magmax]
-            model.dump_events(selevents, dst)
+        dst = os.path.join(conf.project_dir, 'catalog.pf')
+        if conf.sw_filter_events:
+            sel1ev = [ev for ev in events if
+                      ev.lat >= conf.latmin and
+                      ev.lat <= conf.latmax]
+            if conf.lonmin <= conf.lonmax:
+                sel2ev = [ev for ev in sel1ev if
+                          ev.lon >= conf.lonmin and
+                          ev.lon <= conf.lonmax]
+            else:
+                sel2ev = [ev for ev in sel1ev if
+                          ev.longitude >= conf.lonmin or
+                          ev.longitude <= conf.lonmax]
+            sel3ev = [ev for ev in sel2ev if
+                      ev.depth >= conf.depthmin and
+                      ev.depth <= conf.depthmax]
+            sel4ev = [ev for ev in sel3ev if ev.magnitude is not None]
+            sel5ev = [ev for ev in sel4ev if
+                      ev.magnitude >= conf.magmin and
+                      ev.magnitude <= conf.magmax]
+            selevents = sel5ev
+        else:
+            selevents = events
+        model.dump_events(selevents, dst)
 
         print('Project directory prepared "%s"' % conf.project_dir)
+        print('Catalog prepared with %s events' % str(len(selevents)))
 
 
 def command_matrix(args):
@@ -271,7 +305,7 @@ def command_matrix(args):
                                       'events_to_be_clustered.pf')
         model.dump_events(events, new_catalog_fn)
 
-        simmat = sccluster.compute_similarity_matrix(events, conf.metric)
+        simmat = sccluster.compute_similarity_matrix(events, conf)
 
     sccluster.save_similarity_matrix(simmat, simmat_temporal_fn)
 
@@ -349,6 +383,14 @@ def command_cluster(args):
 
     simmat_temp = sccluster.load_similarity_matrix(simmat_temporal_fn)
     events = model.load_events(new_catalog_fn)
+    for iev, ev in enumerate(events):
+        similar_ones = [i for i in simmat_temp[iev] if i < conf.dbscan_eps]
+        nsimilar = len(similar_ones)-1
+        if ev.tags is None:
+            ev.tags = []
+        if nsimilar > conf.dbscan_nmin:
+            ev.tags.append('dbtype:core')
+
     eventsclusters = sccluster.dbscan(simmat_temp,
                                       conf.dbscan_nmin, conf.dbscan_eps,
                                       conf.sw_force_cluster_all)
@@ -372,6 +414,11 @@ def command_cluster(args):
     if not noise_cluster_empty:
         n_clusters = n_clusters - 1
     print(str(n_clusters)+' cluster(s) found')
+    if noise_cluster_empty:
+        n_unclustered = 0
+    else:
+        n_unclustered = len(clusters[-1])
+    print(str(n_unclustered)+' unclustered events')
 
     simmat_fig_fn = os.path.join(conf.project_dir,
                                  'simmat_clustered.'+conf.figure_format)
@@ -452,7 +499,9 @@ def command_plot(args):
             'use seiscloud matrix first' % simmat_clustered_fn)
 
     new_catalog_fn = os.path.join(conf.project_dir,
-                                  'events_to_be_clustered.pf')
+                                  'clustering_results',
+                                  'clustered_events.pf')
+#                                  'events_to_be_clustered.pf')
     if not os.path.isfile(new_catalog_fn):
         die('catalog of selected events does not exists: %s; ' +
             'use seiscloud matrix and seiscloud cluster first'
