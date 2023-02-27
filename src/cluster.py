@@ -191,7 +191,7 @@ def get_clusters(events, eventsclusters):
     return clusters
 
 
-def get_distance_mt_l2(eventi, eventj):
+def get_distance_mt_l2(eventi, eventj, conf):
     '''
     L2 norm among two moment tensors, with 6 independet entries
     '''
@@ -218,7 +218,7 @@ def get_distance_mt_l2(eventi, eventj):
     return d
 
 
-def get_distance_mt_l1(eventi, eventj):
+def get_distance_mt_l1(eventi, eventj, conf):
     '''
     L1 norm among two moment tensors, with 6 independet entries
     '''
@@ -245,7 +245,7 @@ def get_distance_mt_l1(eventi, eventj):
     return d
 
 
-def get_distance_mt_cos(eventi, eventj):
+def get_distance_mt_cos(eventi, eventj, conf):
     '''
     Inner product among two moment tensors.
 
@@ -291,7 +291,7 @@ def get_distance_mt_cos(eventi, eventj):
     return d
 
 
-def get_distance_mt_weighted_cos(eventi, eventj, ws):
+def get_distance_mt_weighted_cos(eventi, eventj, conf):
     '''
     Weighted moment tensor distance.
 
@@ -299,6 +299,9 @@ def get_distance_mt_weighted_cos(eventi, eventj, ws):
     '''
     mti = eventi.moment_tensor
     mtj = eventj.moment_tensor
+
+    ws = [conf.weight_mnn, conf.weight_mee, conf.weight_mdd,
+          conf.weight_mne, conf.weight_mnd, conf.weight_med]
 
     ni = math.sqrt(
         (ws[0] * mti.mnn)**2 +
@@ -336,7 +339,7 @@ def get_distance_mt_weighted_cos(eventi, eventj, ws):
     return d
 
 
-def get_distance_dc(eventi, eventj):
+def get_distance_dc(eventi, eventj, conf):
     '''Normalized Kagan angle distance among DC components of moment tensors.
        Based on Kagan, Y. Y., 1991, GJI
     '''
@@ -351,14 +354,14 @@ def get_distance_dc(eventi, eventj):
     return d
 
 
-def get_distance_hypo(eventi, eventj):
+def get_distance_hypo(eventi, eventj, conf):
     '''
     Normalized Euclidean hypocentral distance, assuming flat earth to combine
     epicentral distance and depth difference.
 
-    The normalization assumes largest considered distance is 1000 km.
+    The normalization assumes max considered distance is conf.max_space_dif.
     '''
-    maxdist_km = 1000.
+    maxdist_km = conf.max_space_dif/km
     a_lats, a_lons, b_lats, b_lons = \
         eventi.lat, eventi.lon, eventj.lat, eventj.lon
 
@@ -375,8 +378,6 @@ def get_distance_hypo(eventi, eventj):
         hypo_distance_km = math.sqrt(
             distance_km * distance_km + ddepth_km * ddepth_km)
 
-        # maxdist = float(inv_param['EUCLIDEAN_MAX'])
-
         d = hypo_distance_km / maxdist_km
         if d >= 1.:
             d = 1.
@@ -384,11 +385,11 @@ def get_distance_hypo(eventi, eventj):
     return d
 
 
-def get_distance_epi(eventi, eventj):
+def get_distance_epi(eventi, eventj, conf):
     '''Normalized Euclidean epicentral distance.
-       The normalization assumes largest considered distance is 1000 km.
+       The normalization assumes max considered distance is conf.max_space_dif.
     '''
-    maxdist_km = 1000.
+    maxdist_km = conf.max_space_dif/km
 
     a_lats, a_lons, b_lats, b_lons = \
         eventi.lat, eventi.lon, eventj.lat, eventj.lon
@@ -408,27 +409,25 @@ def get_distance_epi(eventi, eventj):
     return d
 
 
-def get_distance_interevent_time(eventi, eventj):
+def get_distance_interevent_time(eventi, eventj, conf):
     '''
     Normalized interevent time.
-
-    The normalization assumes largest considered time difference is 365 days.
+    The normalization assumes max considered distance is conf.max_time_dif.
     '''
 
     ti = eventi.time
     tj = eventj.time
 
-    d = abs(ti - tj) / 31536000.
+    d = abs(ti - tj) / conf.max_time_dif
     if d >= 1.:
         d = 1.
 
     return d
 
 
-def get_distance_magnitude(eventi, eventj):
+def get_distance_magnitude(eventi, eventj, conf):
     '''
     Normalized magnitude difference.
-
     The normalization assumes largest considered difference 10.
     '''
 
@@ -442,9 +441,9 @@ def get_distance_magnitude(eventi, eventj):
     return d
 
 
-def get_distance_triangle_diagram(eventi, eventj):
+def get_distance_triangle_diagram(eventi, eventj, conf):
     '''
-    Scalar product among principal axes (?).
+    Scalar product among principal axes.
     '''
 
     mti = eventi.moment_tensor
@@ -467,7 +466,7 @@ def get_distance_triangle_diagram(eventi, eventj):
     return d
 
 
-def get_distance(eventi, eventj, metric, **kwargs):
+def get_distance(eventi, eventj, conf, **kwargs):
     '''
     Compute the normalized distance among two earthquakes, calling the function
     for the chosen metric definition.
@@ -486,14 +485,14 @@ def get_distance(eventi, eventj, metric, **kwargs):
         'principal_axis': get_distance_triangle_diagram}
 
     try:
-        func = metric_funcs[metric]
+        func = metric_funcs[conf.metric]
     except KeyError:
-        raise ClusterError('unknown metric: %s' % metric)
+        raise ClusterError('unknown metric: %s' % conf.metric)
 
-    return func(eventi, eventj)
+    return func(eventi, eventj, conf)
 
 
-def compute_similarity_matrix(events, metric):
+def compute_similarity_matrix(events, conf):
     '''
     Compute and return a similarity matrix for all event pairs, according to
     the desired metric
@@ -508,7 +507,7 @@ def compute_similarity_matrix(events, metric):
     simmat = num.zeros((nev, nev), dtype=float)
     for i in range(len(events)):
         for j in range(i):
-            d = get_distance(events[i], events[j], metric)
+            d = get_distance(events[i], events[j], conf)
             simmat[i, j] = d
             simmat[j, i] = d
 
@@ -546,7 +545,7 @@ def get_median(events, conf):
         dist_matrix = num.zeros((nev, nev))
         for i, evi in enumerate(events):
             for j, evj in enumerate(events):
-                dist_matrix[i, j] = get_distance(evi, evj, conf.metric)
+                dist_matrix[i, j] = get_distance(evi, evj, conf)
     for i, evi in enumerate(events):
         cumul_d = 0.
         for j, evj in enumerate(events):
@@ -594,6 +593,19 @@ def save_all(events, eventsclusters, clusters, conf, resdir):
             ev.tags.append(tag)
         else:
             ev.tags = [tag]
+        core_event = False
+        for tag in ev.tags:
+            spltag = tag.split(':')
+            if spltag[0] == 'dbtype' and spltag[1] == 'core':
+                core_event = True
+        if eventsclusters[iev] == -1:
+            if core_event:
+                print('WARNING: core event is unclustered')
+            ev.tags.append('dbtype:isle')
+        else:
+            if not core_event:
+                ev.tags.append('dbtype:edge')
+
     model.dump_events(events, fn)
 
     # save events of each cluster

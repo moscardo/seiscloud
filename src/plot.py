@@ -11,7 +11,10 @@ from pyrocko.automap import Map
 from pyrocko import orthodrome as od
 from pyrocko import moment_tensor as pmt
 from pyrocko.plot import beachball
+from pyrocko.plot.gmtpy import GMT, cm
 from matplotlib import dates, colors
+from seiscloud import cluster as scc
+
 
 epsilon = 1e-6
 km = 1000.
@@ -37,9 +40,9 @@ def get_axis_coords(events):
         pax = ev.moment_tensor.p_axis()
         tax = ev.moment_tensor.t_axis()
         bax = ev.moment_tensor.null_axis()
-        p = [pax[0, 0], pax[0, 1], pax[0, 2]]
-        t = [tax[0, 0], tax[0, 1], tax[0, 2]]
-        b = [bax[0, 0], bax[0, 1], bax[0, 2]]
+        p = [pax[0], pax[1], pax[2]]
+        t = [tax[0], tax[1], tax[2]]
+        b = [bax[0], bax[1], bax[2]]
 
         if p[2] < 0:
             p = [-p[0], -p[1], -p[2]]
@@ -84,9 +87,9 @@ def get_triangle_coords(events):
         pax = ev.moment_tensor.p_axis()
         tax = ev.moment_tensor.t_axis()
         bax = ev.moment_tensor.null_axis()
-        p = [pax[0, 0], pax[0, 1], pax[0, 2]]
-        t = [tax[0, 0], tax[0, 1], tax[0, 2]]
-        b = [bax[0, 0], bax[0, 1], bax[0, 2]]
+        p = [pax[0], pax[1], pax[2]]
+        t = [tax[0], tax[1], tax[2]]
+        b = [bax[0], bax[1], bax[2]]
 
 #        t,p,b=sds2tpb(ev.strike,ev.dip,ev.rake)
         a3526 = 35.26*math.pi/180.
@@ -95,7 +98,10 @@ def get_triangle_coords(events):
         deltat = math.asin(abs(t[2]))
         deltap = math.asin(abs(p[2]))
 
-        psi = math.atan(math.sin(deltat)/math.sin(deltap))-0.25*math.pi
+        if math.sin(deltap) == 0:
+            psi = math.atan(math.sin(deltat)/epsilon)-0.25*math.pi
+        else:
+            psi = math.atan(math.sin(deltat)/math.sin(deltap))-0.25*math.pi
         den = math.sin(a3526)*math.sin(deltab) +\
             math.cos(a3526)*math.cos(deltab)*math.cos(psi)
 
@@ -181,16 +187,19 @@ def savefig_similarity_matrix(simmat, figname, title):
     f.savefig(figname)
 
 
-def cluster_to_color(cluster_id):
+def cluster_to_color(cluster_id, conf):
     '''
     Given a cluster id provide the corresponding color
     '''
-    mycolors = ['black', 'red', 'blue', 'green', 'darkviolet', 'gold',
-                'darkorange', 'dodgerblue', 'brown', 'lightseagreen', 'plum',
-                'lawngreen', 'palevioletred', 'royalblue', 'limegreen',
-                'indigo']
-    my_def_color = 'gainsboro'
-    if cluster_id > (len(mycolors)-2):
+    if conf.sw_select_colors:
+        mycolors = conf.cluster_colors
+    else:
+        mycolors = ['black', 'red', 'blue', 'green', 'darkviolet', 'gold',
+                    'darkorange', 'dodgerblue', 'brown', 'lightseagreen',
+                    'plum', 'lawngreen', 'palevioletred', 'royalblue',
+                    'limegreen', 'indigo', 'gainsboro']
+    my_def_color = mycolors[-1]
+    if cluster_id > (len(mycolors)-3):
         color = my_def_color
     else:
         color = mycolors[cluster_id+1]
@@ -207,35 +216,198 @@ def color2rgb(col):
     return rgb
 
 
+def plot_global(events, eventsclusters, clusters, conf, plotdir):
+    '''
+    Plot map of seismicity clusters
+    '''
+
+    # Generate the basic map
+    gmt = GMT(config={
+        'MAP_FRAME_TYPE': 'fancy',
+        'GRID_CROSS_SIZE_PRIMARY': '0',
+        'PS_MEDIA': 'Custom_%ix%i' % (21*cm, 13*cm)})
+
+    gmt.psbasemap(
+        R='g',        # global
+        J='H0/16c',
+        B='0')
+    gmt.pscoast(
+        R='g',        # region
+        J='H0/16c',  # projection
+        B='g30',               # grid
+        D='c',                 # resolution
+        S=(220, 220, 250),     # wet fill color
+        G=(250, 250, 220),     # dry fill color
+        W='thinnest')          # shoreline pen
+
+    # Events in clusters
+    for id_cluster in clusters:
+        col = cluster_to_color(id_cluster, conf)
+        mylats, mylons = [], []
+        for iev, evcl in enumerate(eventsclusters):
+            if evcl == id_cluster:
+                mylats.append(events[iev].lat)
+                mylons.append(events[iev].lon)
+        gmt.psxy(
+            R='g',
+            J='H0/6i',
+            in_columns=(mylons, mylats),
+            S='c3p',
+            G=color2rgb(col))
+
+    figname = os.path.join(plotdir, 'plot_map.'+conf.figure_format)
+    gmt.save(figname)
+
+
+def plot_global_dbscan(events, eventsclusters, clusters, conf, plotdir):
+    '''
+    Plot map of seismicity dbscan types
+    '''
+
+    # Generate the basic map
+    gmt = GMT(config={
+        'MAP_FRAME_TYPE': 'fancy',
+        'GRID_CROSS_SIZE_PRIMARY': '0',
+        'PS_MEDIA': 'Custom_%ix%i' % (21*cm, 13*cm)})
+
+    gmt.psbasemap(
+        R='g',        # global
+        J='H0/16c',
+        B='0')
+    gmt.pscoast(
+        R='g',        # region
+        J='H0/16c',  # projection
+        B='g30',               # grid
+        D='c',                 # resolution
+        S=(220, 220, 250),     # wet fill color
+        G=(250, 250, 220),     # dry fill color
+        W='thinnest')          # shoreline pen
+
+    # Events in clusters
+    mylats, mylons = [], []
+    col = 'mediumblue'
+    for iev, evcl in enumerate(eventsclusters):
+        if 'dbtype:edge' in events[iev].tags:
+            mylats.append(events[iev].lat)
+            mylons.append(events[iev].lon)
+    gmt.psxy(
+        R='g',
+        J='H0/6i',
+        in_columns=(mylons, mylats),
+        S='c3p',
+        G=color2rgb(col))
+
+    mylats, mylons = [], []
+    col = 'dodgerblue'
+    for iev, evcl in enumerate(eventsclusters):
+        if 'dbtype:core' in events[iev].tags:
+            mylats.append(events[iev].lat)
+            mylons.append(events[iev].lon)
+    gmt.psxy(
+        R='g',
+        J='H0/6i',
+        in_columns=(mylons, mylats),
+        S='c3p',
+        G=color2rgb(col))
+
+    mylats, mylons = [], []
+    col = 'gray'
+    for iev, evcl in enumerate(eventsclusters):
+        if 'dbtype:isle' in events[iev].tags:
+            mylats.append(events[iev].lat)
+            mylons.append(events[iev].lon)
+    gmt.psxy(
+        R='g',
+        J='H0/6i',
+        in_columns=(mylons, mylats),
+        S='c3p',
+        G=color2rgb(col))
+
+    figname = os.path.join(plotdir, 'plot_map_dbscan.'+conf.figure_format)
+    gmt.save(figname)
+
+
+def plot_global_with_dcs(events, eventsclusters, clusters, conf, plotdir):
+    '''
+    Plot map of seismicity clusters, with focal mechanisms
+    '''
+    # Generate the basic map
+    gmt = GMT(config={
+        'MAP_FRAME_TYPE': 'fancy',
+        'GRID_CROSS_SIZE_PRIMARY': '0',
+        'PS_MEDIA': 'Custom_%ix%i' % (21*cm, 13*cm)})
+
+    gmt.psbasemap(
+        R='g',        # global
+        J='H0/16c',
+        B='0')
+    gmt.pscoast(
+        R='g',        # region
+        J='H0/16c',  # projection
+        B='g30',               # grid
+        D='c',                 # resolution
+        S=(220, 220, 250),     # wet fill color
+        G=(250, 250, 220),     # dry fill color
+        W='thinnest')          # shoreline pen
+
+    # Events in clusters
+    factor_symbl_size = 2.5
+    beachball_symbol = 'd'
+
+    for id_cluster in clusters:
+        col = cluster_to_color(id_cluster, conf)
+        g_col = color2rgb(col)
+        for iev, evcl in enumerate(eventsclusters):
+            if evcl == id_cluster:
+                ev = events[iev]
+                if ev.moment_tensor is not None:
+                    factor_symbl_size = ev.magnitude
+                    devi = ev.moment_tensor.deviatoric()
+                    beachball_size = 1.*factor_symbl_size
+                    mt = devi.m_up_south_east()
+                    mt = mt / ev.moment_tensor.scalar_moment() \
+                        * pmt.magnitude_to_moment(5.0)
+                    m6 = pmt.to6(mt)
+
+                    data = (ev.lon, ev.lat, 10) + tuple(m6) + (1, 0, 0)
+
+                    gmt.psmeca(
+                        R='g',
+                        J='H0/6i',
+                        in_rows=[data],
+                        G=g_col,
+                        E='white',
+                        W='1p,%s' % g_col,
+                        M=True,
+                        S='%s%g' % (beachball_symbol[0],
+                                    (beachball_size)/gmtpy.cm))
+
+    figname = os.path.join(plotdir, 'plot_map_with_dcs.'+conf.figure_format)
+    gmt.save(figname)
+
+
 def plot_spatial(events, eventsclusters, clusters, conf, plotdir):
     '''
     Plot map of seismicity clusters
     '''
-    lats = [ev.lat for ev in events]
-    lons = [ev.lon for ev in events]
-#    deps = [ev.depth for ev in events]
-#    colors = [cluster_to_color(clid) for clid in eventsclusters]
+    # lats = [ev.lat for ev in events]
+    # lons = [ev.lon for ev in events]
 
-    if conf.sw_filterevent:
-        latmin, latmax = conf.latmin, conf.latmax
-        lonmin, lonmax = conf.lonmin, conf.lonmax
-#        depmin, depmax = conf.depthmin, conf.depthmax
-        if latmin > latmax:
-            print('cases over lon +-180 still to be implemented')
-            sys.exit()
-        center = model.event(0.5*(latmin+latmax), 0.5*(lonmin+lonmax))
+    latmean = 0.5*(conf.latmin+conf.latmax)
+    if conf.lonmin <= conf.lonmax:
+        lonmean = 0.5*(conf.lonmin+conf.lonmax)
     else:
-        latmin, latmax = min(lats)-0.1, max(lats)+0.1
-        lonmin, lonmax = min(lons)-0.1, max(lons)+0.1
-#        depmin = 0.*km
-#        depmax = 1.05*max(deps)
-        center = od.Loc(0.5*(latmin+latmax), 0.5*(lonmin+lonmax))
+        lonmean = 0.5*(conf.lonmin+(360.+conf.lonmax))
+        if lonmean > 180.:
+            lonmean = lonmean - 360.
+    center = od.Loc(latmean, lonmean)
 
     # Map size
     if conf.map_radius is not None:
         safe_radius = conf.map_radius
     else:
-        corners = [od.Loc(latmin, lonmin), od.Loc(latmin, lonmax)]
+        corners = [od.Loc(conf.latmin, conf.lonmin),
+                   od.Loc(conf.latmin, conf.lonmax)]
         dist1 = od.distance_accurate50m(center, corners[0])
         dist2 = od.distance_accurate50m(center, corners[1])
         safe_radius = max(dist1, dist2)
@@ -247,7 +419,7 @@ def plot_spatial(events, eventsclusters, clusters, conf, plotdir):
         radius=safe_radius,
         width=30., height=30.,
         show_grid=False,
-        show_topo=False,
+        show_topo=conf.sw_topography,
         color_dry=(238, 236, 230),
         topo_cpt_wet='light_sea_uniform',
         topo_cpt_dry='light_land_uniform',
@@ -256,18 +428,18 @@ def plot_spatial(events, eventsclusters, clusters, conf, plotdir):
         show_rivers=False,
         show_plates=False)
 
-    if conf.sw_filterevent:
-        rectlons = [lonmin, lonmin, lonmax, lonmax, lonmin]
-        rectlats = [latmin, latmax, latmax, latmin, latmin]
-        m.gmt.psxy(in_columns=(rectlons, rectlats),
-                   W='thin,0/0/0,dashed', *m.jxyr)
+    # if conf.sw_filter_events:
+    #     rectlons = [lonmin, lonmin, lonmax, lonmax, lonmin]
+    #     rectlats = [latmin, latmax, latmax, latmin, latmin]
+    #     m.gmt.psxy(in_columns=(rectlons, rectlats),
+    #                W='thin,0/0/0,dashed', *m.jxyr)
 
     # Draw some larger cities covered by the map area
     m.draw_cities()
 
     # Events in clusters
     for id_cluster in clusters:
-        col = cluster_to_color(id_cluster)
+        col = cluster_to_color(id_cluster, conf)
         mylats, mylons = [], []
         for iev, evcl in enumerate(eventsclusters):
             if evcl == id_cluster:
@@ -281,35 +453,26 @@ def plot_spatial(events, eventsclusters, clusters, conf, plotdir):
 #    m.show()
 
 
-def plot_spatial_with_dcs(events, eventsclusters, clusters, conf, plotdir):
+def plot_spatial_dbscan(events, eventsclusters, clusters, conf, plotdir):
     '''
-    Plot map of seismicity clusters, with focal mechanisms
+    Plot map of seismicity dbscan types
     '''
-    lats = [ev.lat for ev in events]
-    lons = [ev.lon for ev in events]
-#    deps = [ev.depth for ev in events]
-#    colors = [cluster_to_color(clid) for clid in eventsclusters]
 
-    if conf.sw_filterevent:
-        latmin, latmax = conf.latmin, conf.latmax
-        lonmin, lonmax = conf.lonmin, conf.lonmax
-#        depmin, depmax = conf.depthmin, conf.depthmax
-        if latmin > latmax:
-            print('cases over lon +-180 still to be implemented')
-            sys.exit()
-        center = model.event(0.5*(latmin+latmax), 0.5*(lonmin+lonmax))
+    latmean = 0.5*(conf.latmin+conf.latmax)
+    if conf.lonmin <= conf.lonmax:
+        lonmean = 0.5*(conf.lonmin+conf.lonmax)
     else:
-        latmin, latmax = min(lats)-0.1, max(lats)+0.1
-        lonmin, lonmax = min(lons)-0.1, max(lons)+0.1
-#        depmin = 0.*km
-#        depmax = 1.05*max(deps)
-        center = od.Loc(0.5*(latmin+latmax), 0.5*(lonmin+lonmax))
+        lonmean = 0.5*(conf.lonmin+(360.+conf.lonmax))
+        if lonmean > 180.:
+            lonmean = lonmean - 360.
+    center = od.Loc(latmean, lonmean)
 
     # Map size
-    if conf.sw_manual_radius:
+    if conf.map_radius is not None:
         safe_radius = conf.map_radius
     else:
-        corners = [od.Loc(latmin, lonmin), od.Loc(latmin, lonmax)]
+        corners = [od.Loc(conf.latmin, conf.lonmin),
+                   od.Loc(conf.latmin, conf.lonmax)]
         dist1 = od.distance_accurate50m(center, corners[0])
         dist2 = od.distance_accurate50m(center, corners[1])
         safe_radius = max(dist1, dist2)
@@ -321,7 +484,7 @@ def plot_spatial_with_dcs(events, eventsclusters, clusters, conf, plotdir):
         radius=safe_radius,
         width=30., height=30.,
         show_grid=False,
-        show_topo=False,
+        show_topo=conf.sw_topography,
         color_dry=(238, 236, 230),
         topo_cpt_wet='light_sea_uniform',
         topo_cpt_dry='light_land_uniform',
@@ -330,11 +493,89 @@ def plot_spatial_with_dcs(events, eventsclusters, clusters, conf, plotdir):
         show_rivers=False,
         show_plates=False)
 
-    if conf.sw_filterevent:
-        rectlons = [lonmin, lonmin, lonmax, lonmax, lonmin]
-        rectlats = [latmin, latmax, latmax, latmin, latmin]
-        m.gmt.psxy(in_columns=(rectlons, rectlats),
-                   W='thin,0/0/0,dashed', *m.jxyr)
+    # Draw some larger cities covered by the map area
+    m.draw_cities()
+
+    # Events in clusters
+    mylats, mylons = [], []
+    col = 'mediumblue'
+    for iev, evcl in enumerate(eventsclusters):
+        if 'dbtype:edge' in events[iev].tags:
+            mylats.append(events[iev].lat)
+            mylons.append(events[iev].lon)
+    m.gmt.psxy(in_columns=(mylons, mylats), S='c7p',
+               G=color2rgb(col), *m.jxyr)
+
+    mylats, mylons = [], []
+    col = 'dodgerblue'
+    for iev, evcl in enumerate(eventsclusters):
+        if 'dbtype:core' in events[iev].tags:
+            mylats.append(events[iev].lat)
+            mylons.append(events[iev].lon)
+    m.gmt.psxy(in_columns=(mylons, mylats), S='c7p',
+               G=color2rgb(col), *m.jxyr)
+
+    mylats, mylons = [], []
+    col = 'gray'
+    for iev, evcl in enumerate(eventsclusters):
+        if 'dbtype:isle' in events[iev].tags:
+            mylats.append(events[iev].lat)
+            mylons.append(events[iev].lon)
+    m.gmt.psxy(in_columns=(mylons, mylats), S='c7p',
+               G=color2rgb(col), *m.jxyr)
+
+    figname = os.path.join(plotdir, 'plot_map_dbscan.'+conf.figure_format)
+    m.save(figname)
+#    m.show()
+
+
+def plot_spatial_with_dcs(events, eventsclusters, clusters, conf, plotdir):
+    '''
+    Plot map of seismicity clusters, with focal mechanisms
+    '''
+    # lats = [ev.lat for ev in events]
+    # lons = [ev.lon for ev in events]
+
+    latmean = 0.5*(conf.latmin+conf.latmax)
+    if conf.lonmin <= conf.lonmax:
+        lonmean = 0.5*(conf.lonmin+conf.lonmax)
+    else:
+        lonmean = 0.5*(conf.lonmin+(360.+conf.lonmax))
+        if lonmean > 180.:
+            lonmean = lonmean - 360.
+    center = od.Loc(latmean, lonmean)
+
+    # Map size
+    if conf.sw_manual_radius:
+        safe_radius = conf.map_radius
+    else:
+        corners = [od.Loc(conf.latmin, conf.lonmin),
+                   od.Loc(conf.latmin, conf.lonmax)]
+        dist1 = od.distance_accurate50m(center, corners[0])
+        dist2 = od.distance_accurate50m(center, corners[1])
+        safe_radius = max(dist1, dist2)
+
+    # Generate the basic map
+    m = Map(
+        lat=center.lat,
+        lon=center.lon,
+        radius=safe_radius,
+        width=30., height=30.,
+        show_grid=False,
+        show_topo=conf.sw_topography,
+        color_dry=(238, 236, 230),
+        topo_cpt_wet='light_sea_uniform',
+        topo_cpt_dry='light_land_uniform',
+        illuminate=True,
+        illuminate_factor_ocean=0.15,
+        show_rivers=False,
+        show_plates=False)
+
+    # if conf.sw_filter_events:
+    #     rectlons = [lonmin, lonmin, lonmax, lonmax, lonmin]
+    #     rectlats = [latmin, latmax, latmax, latmin, latmin]
+    #     m.gmt.psxy(in_columns=(rectlons, rectlats),
+    #                W='thin,0/0/0,dashed', *m.jxyr)
 
     # Draw some larger cities covered by the map area
     m.draw_cities()
@@ -344,7 +585,7 @@ def plot_spatial_with_dcs(events, eventsclusters, clusters, conf, plotdir):
     beachball_symbol = 'd'
 
     for id_cluster in clusters:
-        col = cluster_to_color(id_cluster)
+        col = cluster_to_color(id_cluster, conf)
         g_col = color2rgb(col)
         for iev, evcl in enumerate(eventsclusters):
             if evcl == id_cluster:
@@ -387,15 +628,20 @@ def plot_tm(events, eventsclusters, clusters, conf, plotdir):
     Plot magnitude vs time for the seismicity clusters.
     Plot cumulative moment vs time for the seismicity clusters.
     '''
-    times = [ev.time for ev in events]
-    orig_dates = [datetime.datetime.fromtimestamp(ev.time) for ev in events]
+    selevents, seleventsclusters = [], []
+    for iev, ev in enumerate(events):
+        if ev.magnitude is not None:
+            selevents.append(ev)
+            seleventsclusters.append(eventsclusters[iev])
+    times = [ev.time for ev in selevents]
+    orig_dates = [datetime.datetime.fromtimestamp(t) for t in times]
     mpl_dates = dates.date2num(orig_dates)
-    mags = [ev.magnitude for ev in events]
-    colors = [cluster_to_color(clid) for clid in eventsclusters]
+    mags = [ev.magnitude for ev in selevents]
+    colors = [cluster_to_color(clid, conf) for clid in seleventsclusters]
 
     dates_format = dates.DateFormatter('%Y-%m-%d')
 
-    if conf.sw_filterevent:
+    if conf.sw_filter_events:
         tmin, tmax = conf.tmin, conf.tmax
         magmin, magmax = conf.magmin, conf.magmax
     else:
@@ -436,15 +682,14 @@ def plot_tm(events, eventsclusters, clusters, conf, plotdir):
     figname = os.path.join(plotdir, 'plot_tm.'+conf.figure_format)
     f.savefig(figname)
 
-
-    times = [ev.time for ev in events]
-    orig_dates = [datetime.datetime.fromtimestamp(ev.time) for ev in events]
+    times = [ev.time for ev in selevents]
+    orig_dates = [datetime.datetime.fromtimestamp(t) for t in times]
     mpl_dates = dates.date2num(orig_dates)
-    colors = [cluster_to_color(clid) for clid in eventsclusters]
+    colors = [cluster_to_color(clid, conf) for clid in seleventsclusters]
 
     dates_format = dates.DateFormatter('%Y-%m-%d')
 
-    if conf.sw_filterevent:
+    if conf.sw_filter_events:
         tmin, tmax = conf.tmin, conf.tmax
         magmin, magmax = conf.magmin, conf.magmax
     else:
@@ -477,8 +722,8 @@ def plot_tm(events, eventsclusters, clusters, conf, plotdir):
     cum_m0s = []
     cm0 = 0.
     cum_m0s.append(cm0)
-    for ev in events:
-        print(ev.name, ev.time)
+    for ev in selevents:
+        # print(ev.name, ev.time)
         new_date = dates.date2num(datetime.datetime.fromtimestamp(ev.time))
         cum_dates.append(new_date)
         cum_dates.append(new_date)
@@ -496,21 +741,21 @@ def plot_tm(events, eventsclusters, clusters, conf, plotdir):
 
     for irun in clusters:
         cl_events = []
-        for iev, ev in enumerate(events):
-            if irun == eventsclusters[iev]:
+        for iev, ev in enumerate(selevents):
+            if irun == seleventsclusters[iev]:
                 cl_events.append(ev)
         # cl_events = [events[iev] for iev in len(events)
         #              if irun == eventsclusters[iev]]
-        print('A', irun, cl_events)
+        # print('A', irun, cl_events)
         cum_dates = []
         d1 = dates.date2num(datetime.datetime.fromtimestamp(tmin))
         cum_dates.append(d1)
         cum_m0s = []
         cm0 = 0.
         cum_m0s.append(cm0)
-        color = cluster_to_color(irun)
+        color = cluster_to_color(irun, conf)
         for ev in cl_events:
-            print(ev.name, ev.time)
+            # print(ev.name, ev.time)
             new_date = dates.date2num(datetime.datetime.fromtimestamp(ev.time))
             cum_dates.append(new_date)
             cum_dates.append(new_date)
@@ -541,15 +786,20 @@ def plot_td(events, eventsclusters, clusters, conf, plotdir):
     '''
     Plot depth vs time for the seismicity clusters
     '''
-    times = [ev.time for ev in events]
-    orig_dates = [datetime.datetime.fromtimestamp(ev.time) for ev in events]
+    selevents, seleventsclusters = [], []
+    for iev, ev in enumerate(events):
+        if ev.depth is not None:
+            selevents.append(ev)
+            seleventsclusters.append(eventsclusters[iev])
+    times = [ev.time for ev in selevents]
+    orig_dates = [datetime.datetime.fromtimestamp(t) for t in times]
     mpl_dates = dates.date2num(orig_dates)
-    deps = [ev.depth/km for ev in events]
-    colors = [cluster_to_color(clid) for clid in eventsclusters]
+    deps = [ev.depth/km for ev in selevents]
+    colors = [cluster_to_color(clid, conf) for clid in seleventsclusters]
 
     dates_format = dates.DateFormatter('%Y-%m-%d')
 
-    if conf.sw_filterevent:
+    if conf.sw_filter_events:
         tmin, tmax = conf.tmin, conf.tmax
         depmin, depmax = conf.depthmin/km, conf.depthmax/km
     else:
@@ -602,7 +852,7 @@ def plot_triangle(events, eventsclusters, clusters, conf, plotdir):
     for iev, ev in enumerate(events):
         if ev.moment_tensor is not None:
             events_with_mt.append(ev)
-            cols.append(cluster_to_color(eventsclusters[iev]))
+            cols.append(cluster_to_color(eventsclusters[iev], conf))
     xs, ys, cs = get_triangle_coords(events_with_mt)
 
     f = plt.figure(figsize=(10, 10), facecolor='w', edgecolor='k')
@@ -641,7 +891,7 @@ def plot_axis(events, eventsclusters, clusters, conf, plotdir):
                 mtdc = pmt.MomentTensor(m_dc)
                 ev.moment_tensor = mtdc
             events_with_mt.append(ev)
-            cols.append(cluster_to_color(eventsclusters[iev]))
+            cols.append(cluster_to_color(eventsclusters[iev], conf))
     xs, ys = get_axis_coords(events_with_mt)
     pxs, pys = [x[0]*csize+c1[0] for x in xs], [y[0]*csize+c1[1] for y in ys]
     txs, tys = [x[1]*csize+c2[0] for x in xs], [y[1]*csize+c2[1] for y in ys]
@@ -683,7 +933,7 @@ def plot_hudson(events, eventsclusters, clusters, conf, plotdir):
     for iev, ev in enumerate(events):
         if ev.moment_tensor is not None:
             mts.append(ev.moment_tensor)
-            cols.append(cluster_to_color(eventsclusters[iev]))
+            cols.append(cluster_to_color(eventsclusters[iev], conf))
     us, vs = getCoordinatesHudsonPlot(mts)
 
     f = plt.figure(figsize=(12, 10), facecolor='w', edgecolor='k')
@@ -719,6 +969,67 @@ def plot_hudson(events, eventsclusters, clusters, conf, plotdir):
     plt.scatter(us, vs, c=cols, alpha=0.5)
 
     figname = os.path.join(plotdir, 'plot_hudson.'+conf.figure_format)
+    f.savefig(figname)
+#    plt.show()
+
+
+
+def plot_norm_time_space(events, eventsclusters, clusters, conf, plotdir):
+    '''
+    Plot normalized time vs space plot    '''
+    seleventsp1 = []
+    for iev, ev in enumerate(events):
+        if ev.magnitude is not None and ev.depth is not None:
+            seleventsp1.append(ev)
+    seltimes = [ev.time for ev in seleventsp1]
+    firstevents = [ev for ev in seleventsp1 if ev.time == min(seltimes)]
+    firstev = [ev for ev in firstevents][0]
+    selevents, seleventsclusters = [], []
+    for iev, ev in enumerate(events):
+        condition = ev.magnitude is not None and\
+                    ev.depth is not None and\
+                    ev.name != firstev.name
+        if condition:
+            selevents.append(ev)
+            seleventsclusters.append(eventsclusters[iev])
+
+    normtimes, normspaces = [], []
+    b = 1.
+    d_f = 1.6
+    year = 365.*24.*60.*60.
+    for iev, ev in enumerate(selevents):
+        prevevents = [pev for pev in seleventsp1 if pev.time < ev.time]
+        ndists = []
+        for pev in prevevents:
+            t_ij = (ev.time - pev.time)/year
+            r_ij = scc.get_distance_hypo(ev, pev, conf) * 1000.
+            ndist = t_ij * r_ij**d_f * 10.**(-b * pev.magnitude)
+            ndists.append(ndist)
+        minndist = min(ndists)
+        ipev = [iev for iev, ndist in enumerate(ndists)
+                if ndist == minndist][0]
+        prev = prevevents[ipev]
+        normtimes.append(((ev.time-prev.time)/year) *
+                         (10.**(-prev.magnitude/2.)))
+        r_ij = scc.get_distance_hypo(ev, prev, conf) * 1000.
+        normspaces.append((r_ij**d_f)*(10.**(-prev.magnitude/2.)))
+    colors = [cluster_to_color(clid, conf) for clid in seleventsclusters]
+
+    f = plt.figure()
+    f.suptitle('Joint distribution of rescaled time and space', fontsize=14)
+
+    ax = f.add_subplot(111)
+    ax.scatter(normtimes, normspaces, s=15., c=colors, alpha=0.5)
+    plt.xlim(xmax=max(normtimes), xmin=min(normtimes))
+    plt.ylim(ymax=max(normspaces), ymin=min(normspaces))
+    plt.xticks(rotation=45.)
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlabel("Rescaled time, T")
+    plt.ylabel("Rescaled distance, R")
+    plt.subplots_adjust(bottom=.3)
+
+    figname = os.path.join(plotdir, 'plot_norm_td.'+conf.figure_format)
     f.savefig(figname)
 #    plt.show()
 
@@ -797,7 +1108,7 @@ def plot_medians_meca(events, eventsclusters, clusters, conf, resdir, plotdir):
                 beachball_type='full',
                 size=150.,
                 position=((10.*(icl+0.5)/nclusters), 2.),
-                color_t=cluster_to_color(cl),
+                color_t=cluster_to_color(cl, conf),
                 alpha=1.0,
                 linewidth=1.0)
 
@@ -811,21 +1122,108 @@ def plot_medians_meca(events, eventsclusters, clusters, conf, resdir, plotdir):
 
 def plot_all(events, eventsclusters, clusters, conf, resdir, plotdir):
     print("start plotting")
-    plot_similarity_matrices(events, eventsclusters, clusters, conf, plotdir)
-    print("similarity matrix... done")
-    plot_tm(events, eventsclusters, clusters, conf, plotdir)
-    print("time vs mag plot... done")
-    plot_td(events, eventsclusters, clusters, conf, plotdir)
-    print("time vs depth plot... done")
-    plot_triangle(events, eventsclusters, clusters, conf, plotdir)
-    print("triangle plot... done")
-    plot_axis(events, eventsclusters, clusters, conf, plotdir)
-    print("axis plot... done")
-    plot_hudson(events, eventsclusters, clusters, conf, plotdir)
-    print("hudson plot... done")
-    plot_spatial(events, eventsclusters, clusters, conf, plotdir)
-    print("spatial plot... done")
-    plot_spatial_with_dcs(events, eventsclusters, clusters, conf, plotdir)
-    print("spatial_with_dcs plot... done")
-    plot_medians_meca(events, eventsclusters, clusters, conf, resdir, plotdir)
-    print("medians meca plot... done")
+
+    print("similarity matrix...")
+    try:
+        plot_similarity_matrices(events, eventsclusters, clusters, conf, plotdir)
+        print('done')
+    except:
+        print('skipped')
+
+    print("time vs mag plot...")
+    try:
+        plot_tm(events, eventsclusters, clusters, conf, plotdir)
+        print('done')
+    except:
+        print('skipped')
+
+    print("time vs depth plot...")
+    try:
+        plot_td(events, eventsclusters, clusters, conf, plotdir)
+        print('done')
+    except:
+        print('skipped')
+
+    print("triangle plot...")
+    try:
+        plot_triangle(events, eventsclusters, clusters, conf, plotdir)
+        print('done')
+    except:
+        print('skipped')
+
+    print("axis plot...")
+    try:
+        plot_axis(events, eventsclusters, clusters, conf, plotdir)
+        print('done')
+    except:
+        print('skipped')
+
+    print("hudson plot...")
+    try:
+        plot_hudson(events, eventsclusters, clusters, conf, plotdir)
+        print('done')
+    except:
+        print('skipped')
+
+    print("Normalized TD plot...")
+    try:
+        plot_norm_time_space(events, eventsclusters, clusters, conf, plotdir)
+        print('done')
+    except:
+        print('skipped')
+
+    plot_global(events, eventsclusters, clusters, conf, plotdir)
+    if conf.sw_global_plots:
+        print("spatial plot...")
+        try:
+            plot_global(events, eventsclusters, clusters, conf, plotdir)
+            print('done')
+        except:
+            print('skipped')
+
+        print("spatial dbscan plot...")
+        try:
+            plot_global_dbscan(events, eventsclusters, clusters, conf,
+                               plotdir)
+            print('done')
+        except:
+            print('skipped')
+
+        print("spatial_with_dcs plot...")
+        try:
+            plot_global_with_dcs(events, eventsclusters, clusters, conf,
+                                 plotdir)
+            print('done')
+        except:
+            print('skipped')
+    else:
+        print("spatial plot...")
+        try:
+            plot_spatial(events, eventsclusters, clusters, conf, plotdir)
+            print('done')
+        except:
+            print('skipped')
+
+        print("spatial dbscan plot...")
+        try:
+            plot_spatial_dbscan(events, eventsclusters, clusters, conf,
+                                plotdir)
+            print('done')
+        except:
+            print('skipped')
+
+        print("spatial_with_dcs plot...")
+        try:
+            plot_spatial_with_dcs(events, eventsclusters, clusters, conf,
+                                  plotdir)
+            print('done')
+        except:
+            print('skipped')
+
+    print("medians meca plot...")
+    try:
+        plot_medians_meca(events, eventsclusters, clusters,
+                          conf, resdir, plotdir)
+        print('done')
+    except:
+        print('skipped')
