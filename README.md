@@ -5,7 +5,9 @@ Software for seismicity clustering.
 * Clustering using DBSCAN algorithm
 * Graphical output of cluster features
 
-Here a link to the ![Seiscloud logo](https://github.com/moscardo/seiscloud/tree/master/gx/seiscloud_logo.png)
+Here a link to the ![Seiscloud logo](https://git.pyrocko.org/cesca/seiscloud/src/master/gx/seiscloud_logo.png)
+
+and to the ![Seiscloud manual](https://git.pyrocko.org/cesca/seiscloud/src/master/gx/seiscloud_manual.pdf)
 
 Please, contact me for further information and help: simone.cesca@gfz-potsdam.de
 
@@ -16,7 +18,7 @@ Please, contact me for further information and help: simone.cesca@gfz-potsdam.de
 
 ## Download and Installation
 
-    git clone https://github.com/moscardo/seiscloud.git
+    git clone https://git.pyrocko.org/cesca/seiscloud.git
     cd seiscloud
     sudo python3 setup.py install
 
